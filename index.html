@@ -32,16 +32,17 @@ canvas.width = W;
 canvas.height = H;
 
 const GRAVITY = 0.5;
-const GROUND_Y = H - 80;
+const JUMP_FORCE = -12;
 const MOVE_SPEED = 3;
-const BLOCK = 32; // pixel scale unit
+const BLOCK = 32;
+
+// GROUND_TOP — Y-координата поверхности земли (куда встают ногами)
+const GROUND_TOP = H - 48;
 
 // Sky gradient
-const skyGradient = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+const skyGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
 skyGradient.addColorStop(0, '#87CEEB');
 skyGradient.addColorStop(1, '#C9E8F5');
-
-const JUMP_FORCE = -11;
 
 const input = { left: false, right: false, jump: false };
 
@@ -58,14 +59,24 @@ document.addEventListener('keyup', e => {
 });
 
 const player = {
-  x: W / 2,
-  y: GROUND_Y,
+  x: W / 2 - 20,
+  y: GROUND_TOP,  // Y ног игрока
   vy: 0,
   onGround: false,
   facingRight: true,
   walkFrame: 0,
   walkTimer: 0,
 };
+
+// Платформы: y — верхняя поверхность (куда встают ногами)
+const platforms = [
+  { x: 60,  y: GROUND_TOP - 110, w: 128 },
+  { x: 336, y: GROUND_TOP - 110, w: 160 },
+  { x: 600, y: GROUND_TOP - 110, w: 128 },
+  { x: 180, y: GROUND_TOP - 220, w: 128 },
+  { x: 460, y: GROUND_TOP - 220, w: 128 },
+  { x: 310, y: GROUND_TOP - 320, w: 160 },
+];
 
 // Steve pixel art: 8 wide × 18 tall, drawn at 5px per cell = 40×90
 const PALETTE = [
@@ -140,23 +151,34 @@ function drawSteve(x, y, facingRight, walking, frame) {
 }
 
 function drawGround() {
-  // Grass top
   ctx.fillStyle = '#5A8A3C';
-  ctx.fillRect(0, GROUND_Y + SH, W, 16);
-  // Dirt
+  ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
-  ctx.fillRect(0, GROUND_Y + SH + 16, W, H - (GROUND_Y + SH + 16));
-
-  // Grass texture blocks
+  ctx.fillRect(0, GROUND_TOP + 12, W, H - GROUND_TOP - 12);
   ctx.fillStyle = '#4A7A2C';
   for (let bx = 0; bx < W; bx += BLOCK) {
-    ctx.fillRect(bx, GROUND_Y + SH, BLOCK - 1, 6);
+    ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, 5);
   }
+}
+
+function drawPlatform(p) {
+  const PH = 24; // визуальная высота платформы
+  ctx.fillStyle = '#5A8A3C';
+  ctx.fillRect(p.x, p.y, p.w, 10);
+  ctx.fillStyle = '#8B5E3C';
+  ctx.fillRect(p.x, p.y + 10, p.w, PH - 10);
+  ctx.fillStyle = '#4A7A2C';
+  for (let bx = p.x; bx < p.x + p.w; bx += BLOCK) {
+    ctx.fillRect(bx, p.y, Math.min(BLOCK - 1, p.x + p.w - bx), 4);
+  }
+  // Тень снизу
+  ctx.fillStyle = '#3A4A2080';
+  ctx.fillRect(p.x + 4, p.y + PH, p.w - 4, 4);
 }
 
 function drawBackground() {
   ctx.fillStyle = skyGradient;
-  ctx.fillRect(0, 0, W, GROUND_Y + SH);
+  ctx.fillRect(0, 0, W, GROUND_TOP);
 
   // Sun
   ctx.fillStyle = '#FFD700';
@@ -212,15 +234,29 @@ function update() {
 
   // Gravity
   player.vy += GRAVITY;
+  const prevY = player.y;
   player.y += player.vy;
 
-  // Ground collision
-  if (player.y >= GROUND_Y) {
-    player.y = GROUND_Y;
+  player.onGround = false;
+
+  // Коллизия с землёй
+  if (player.y >= GROUND_TOP) {
+    player.y = GROUND_TOP;
     player.vy = 0;
     player.onGround = true;
-  } else {
-    player.onGround = false;
+  }
+
+  // Коллизия с платформами (только приземление сверху)
+  if (player.vy >= 0) {
+    for (const p of platforms) {
+      if (prevY <= p.y && player.y >= p.y &&
+          player.x + SW > p.x + 4 && player.x < p.x + p.w - 4) {
+        player.y = p.y;
+        player.vy = 0;
+        player.onGround = true;
+        break;
+      }
+    }
   }
 
   // World bounds
@@ -230,8 +266,9 @@ function update() {
 function draw() {
   ctx.clearRect(0, 0, W, H);
   drawBackground();
+  platforms.forEach(drawPlatform);
   drawGround();
-  drawSteve(player.x, player.y, player.facingRight, input.left || input.right, player.walkFrame);
+  drawSteve(player.x, player.y - SH, player.facingRight, input.left || input.right, player.walkFrame);
 }
 
 function loop() {
