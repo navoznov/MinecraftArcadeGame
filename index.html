@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minecraft Arcade Game</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+      border: 2px solid #444;
+    }
+  </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+const W = 800;
+const H = 450;
+canvas.width = W;
+canvas.height = H;
+
+const GRAVITY = 0.5;
+const GROUND_Y = H - 80;
+const MOVE_SPEED = 3;
+const BLOCK = 32; // pixel scale unit
+
+// Sky gradient
+const skyGradient = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+skyGradient.addColorStop(0, '#87CEEB');
+skyGradient.addColorStop(1, '#C9E8F5');
+
+const input = { left: false, right: false };
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft')  input.left  = true;
+  if (e.key === 'ArrowRight') input.right = true;
+});
+document.addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft')  input.left  = false;
+  if (e.key === 'ArrowRight') input.right = false;
+});
+
+const player = {
+  x: W / 2,
+  y: GROUND_Y,
+  vy: 0,
+  facingRight: true,
+  walkFrame: 0,
+  walkTimer: 0,
+};
+
+// Steve pixel art: 16×32 logical pixels, drawn at 2× scale = 32×64 on canvas
+// Each color value is an index into the palette
+// 0=transparent, 1=skin, 2=hair/dark, 3=shirt(blue), 4=pants(gray), 5=shoe(dark)
+const PALETTE = [
+  null,       // 0 transparent
+  '#C68642',  // 1 skin
+  '#3B2A1A',  // 2 hair/dark
+  '#3A5FCD',  // 3 shirt blue
+  '#666677',  // 4 pants gray
+  '#2A1A0A',  // 5 shoe dark
+  '#FFFFFF',  // 6 eyes white
+  '#3B2FCD',  // 7 shirt shadow
+];
+
+// Steve sprite: 8 wide × 16 tall (will be drawn at 4px per cell = 32×64)
+const STEVE = [
+  [0,2,2,2,2,2,2,0], // row 0  hair
+  [2,2,2,2,2,2,2,2], // row 1  hair
+  [2,1,1,1,1,1,1,2], // row 2  face
+  [2,1,6,1,1,6,1,2], // row 3  eyes
+  [2,1,1,1,1,1,1,2], // row 4  face
+  [2,1,2,1,1,2,1,2], // row 5  mouth
+  [2,1,1,1,1,1,1,2], // row 6  chin
+  [0,3,3,3,3,3,3,0], // row 7  chest top
+  [3,3,3,3,3,3,3,3], // row 8  chest
+  [3,7,3,3,3,3,7,3], // row 9  chest shadow
+  [3,3,3,3,3,3,3,3], // row 10 waist
+  [4,4,4,0,0,4,4,4], // row 11 hips
+  [4,4,0,0,0,0,4,4], // row 12 upper leg
+  [4,4,0,0,0,0,4,4], // row 13 upper leg
+  [4,4,0,0,0,0,4,4], // row 14 lower leg
+  [5,5,0,0,0,0,5,5], // row 15 shoes
+];
+
+const CELL = 4; // px per sprite cell
+const SW = 8 * CELL;  // sprite width  = 32
+const SH = 16 * CELL; // sprite height = 64
+
+function drawSteve(x, y, facingRight, walking, frame) {
+  ctx.save();
+  // Flip horizontally when facing left
+  if (!facingRight) {
+    ctx.translate(x + SW, y);
+    ctx.scale(-1, 1);
+  } else {
+    ctx.translate(x, y);
+  }
+
+  // Simple walk animation: shift leg pixels
+  const legOffset = walking ? (frame === 0 ? 3 : -3) : 0;
+
+  for (let row = 0; row < 16; row++) {
+    for (let col = 0; col < 8; col++) {
+      const color = PALETTE[STEVE[row][col]];
+      if (!color) continue;
+
+      let drawCol = col;
+      // Apply leg swing to lower half
+      if (row >= 11) {
+        if (col < 4) drawCol = col + (legOffset > 0 ? Math.round(legOffset * (row - 10) / 6) : 0);
+        else         drawCol = col + (legOffset < 0 ? Math.round(legOffset * (row - 10) / 6) : 0);
+      }
+
+      ctx.fillStyle = color;
+      ctx.fillRect(drawCol * CELL, row * CELL, CELL, CELL);
+    }
+  }
+  ctx.restore();
+}
+
+function drawGround() {
+  // Grass top
+  ctx.fillStyle = '#5A8A3C';
+  ctx.fillRect(0, GROUND_Y + SH, W, 16);
+  // Dirt
+  ctx.fillStyle = '#8B5E3C';
+  ctx.fillRect(0, GROUND_Y + SH + 16, W, H - (GROUND_Y + SH + 16));
+
+  // Grass texture blocks
+  ctx.fillStyle = '#4A7A2C';
+  for (let bx = 0; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_Y + SH, BLOCK - 1, 6);
+  }
+}
+
+function drawBackground() {
+  ctx.fillStyle = skyGradient;
+  ctx.fillRect(0, 0, W, GROUND_Y + SH);
+
+  // Sun
+  ctx.fillStyle = '#FFD700';
+  ctx.fillRect(700, 30, 40, 40);
+  ctx.fillStyle = '#FFF176';
+  ctx.fillRect(694, 36, 6, 6);
+  ctx.fillRect(750, 36, 6, 6);
+  ctx.fillRect(718, 24, 6, 6);
+  ctx.fillRect(718, 70, 6, 6);
+
+  // Clouds (blocky)
+  drawCloud(100, 60);
+  drawCloud(350, 40);
+  drawCloud(580, 70);
+}
+
+function drawCloud(cx, cy) {
+  ctx.fillStyle = '#FFFFFFCC';
+  ctx.fillRect(cx,      cy + 8,  48, 16);
+  ctx.fillRect(cx + 8,  cy,      32, 16);
+  ctx.fillRect(cx + 16, cy - 8,  16, 16);
+}
+
+function update() {
+  const moving = input.left || input.right;
+
+  if (input.left) {
+    player.x -= MOVE_SPEED;
+    player.facingRight = false;
+  }
+  if (input.right) {
+    player.x += MOVE_SPEED;
+    player.facingRight = true;
+  }
+
+  // Walk animation
+  if (moving) {
+    player.walkTimer++;
+    if (player.walkTimer > 12) {
+      player.walkTimer = 0;
+      player.walkFrame = 1 - player.walkFrame;
+    }
+  } else {
+    player.walkFrame = 0;
+    player.walkTimer = 0;
+  }
+
+  // Gravity
+  player.vy += GRAVITY;
+  player.y += player.vy;
+
+  // Ground collision
+  if (player.y >= GROUND_Y) {
+    player.y = GROUND_Y;
+    player.vy = 0;
+  }
+
+  // World bounds
+  player.x = Math.max(0, Math.min(W - SW, player.x));
+}
+
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+  drawBackground();
+  drawGround();
+  drawSteve(player.x, player.y, player.facingRight, input.left || input.right, player.walkFrame);
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
