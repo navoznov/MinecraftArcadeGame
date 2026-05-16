@@ -46,6 +46,24 @@ skyGradient.addColorStop(1, '#C9E8F5');
 
 const input = { left: false, right: false, jump: false };
 
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playPew() {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(660, now);
+  osc.frequency.exponentialRampToValueAtTime(220, now + 0.22);
+  gain.gain.setValueAtTime(0.12, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+  osc.start(now);
+  osc.stop(now + 0.22);
+}
+
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft')  input.left  = true;
   if (e.key === 'ArrowRight') input.right = true;
@@ -230,6 +248,7 @@ function update() {
   if (input.jump && player.onGround) {
     player.vy = JUMP_FORCE;
     player.onGround = false;
+    playPew();
   }
 
   // Gravity
