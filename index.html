@@ -64,6 +64,22 @@ function playPew() {
   osc.stop(now + 0.22);
 }
 
+function playSquish() {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(350, now);
+  osc.frequency.exponentialRampToValueAtTime(80, now + 0.18);
+  gain.gain.setValueAtTime(0.25, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+  osc.start(now);
+  osc.stop(now + 0.18);
+}
+
 document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft')  input.left  = true;
   if (e.key === 'ArrowRight') input.right = true;
@@ -132,40 +148,186 @@ const STEVE = [
   [5,5,5,0,0,5,5,5], // row 17 shoes
 ];
 
+// Zombie palette — зелёная кожа, светящиеся глаза, бурая рваная рубаха
+const ZOMBIE_PALETTE = [
+  null,       // 0 transparent
+  '#5A9A48',  // 1 zombie green skin
+  '#2A5A18',  // 2 dark green (hair / head)
+  '#7A5A3A',  // 3 brown tattered shirt
+  '#3A3040',  // 4 dark gray pants
+  '#1A1010',  // 5 dark shoe
+  '#FFFF80',  // 6 glowing yellow eyes
+  '#4A3020',  // 7 shirt shadow
+  '#1A1820',  // 8 pants shadow
+  '#2A6028',  // 9 dark mouth
+];
+
+const ZOMBIE = [
+  [0,0,2,2,2,2,0,0], // row 0  голова (тёмная макушка)
+  [0,2,2,2,2,2,2,0], // row 1
+  [2,2,1,1,1,1,2,2], // row 2  лоб
+  [2,1,1,1,1,1,1,2], // row 3
+  [2,1,6,1,1,6,1,2], // row 4  светящиеся глаза
+  [2,1,6,1,1,6,1,2], // row 5
+  [2,1,1,1,1,1,1,2], // row 6  нос
+  [2,2,9,9,9,9,2,2], // row 7  открытый рот (зомби оскал)
+  [0,3,3,3,3,3,3,0], // row 8  плечи
+  [3,3,3,3,3,3,3,3], // row 9  грудь
+  [3,3,7,3,3,7,3,3], // row 10
+  [3,3,3,3,3,3,3,3], // row 11
+  [3,7,3,3,3,3,7,3], // row 12 пояс
+  [4,4,4,0,0,4,4,4], // row 13 бёдра
+  [4,4,4,0,0,4,4,4], // row 14 ноги верх
+  [4,8,4,0,0,4,8,4], // row 15 ноги
+  [4,4,4,0,0,4,4,4], // row 16 ноги низ
+  [5,5,5,0,0,5,5,5], // row 17 ботинки
+];
+
 const CELL = 5; // px per sprite cell
 const SW = 8 * CELL;  // sprite width  = 40
 const SH = 18 * CELL; // sprite height = 90
 
-function drawSteve(x, y, facingRight, walking, frame) {
-  ctx.save();
-  // Flip horizontally when facing left
-  if (!facingRight) {
-    ctx.translate(x + SW, y);
-    ctx.scale(-1, 1);
-  } else {
-    ctx.translate(x, y);
+// ── Моб-система ────────────────────────────────────────────
+const MOB_SPEED = 1.4;
+let score = 0;
+let mobs = [];
+let spawnTimer = 0;
+const SPAWN_INTERVAL = 240; // кадров между новыми мобами
+
+function spawnMob(startOnScreen = false) {
+  const fromRight = Math.random() > 0.5;
+  const x = startOnScreen
+    ? (fromRight ? W - SW - 20 : 20)
+    : (fromRight ? W + 10 : -SW - 10);
+  mobs.push({
+    x,
+    y: GROUND_TOP,
+    vx: fromRight ? -MOB_SPEED : MOB_SPEED,
+    alive: true,
+    walkFrame: 0,
+    walkTimer: 0,
+    dyingTimer: 0,
+  });
+}
+
+// Начальные мобы — сразу на экране у краёв
+spawnMob(true);
+spawnMob(true);
+
+function updateMobs() {
+  // Спавн новых мобов
+  spawnTimer++;
+  const aliveMobs = mobs.filter(m => m.alive).length;
+  if (spawnTimer >= SPAWN_INTERVAL && aliveMobs < 5) {
+    spawnTimer = 0;
+    spawnMob();
   }
 
-  // Simple walk animation: shift leg pixels
-  const legOffset = walking ? (frame === 0 ? 3 : -3) : 0;
+  // Убрать мёртвых, у которых закончилась анимация смерти
+  mobs = mobs.filter(m => m.alive || m.dyingTimer > 0);
 
+  const prevPlayerY = player.y - player.vy; // Y ног до этого кадра
+
+  for (const mob of mobs) {
+    if (!mob.alive) {
+      mob.dyingTimer--;
+      continue;
+    }
+
+    mob.x += mob.vx;
+
+    mob.walkTimer++;
+    if (mob.walkTimer > 14) {
+      mob.walkTimer = 0;
+      mob.walkFrame = 1 - mob.walkFrame;
+    }
+
+    // Моб ушёл за экран — просто удаляем
+    if (mob.x < -SW - 60 || mob.x > W + 60) {
+      mob.alive = false;
+      mob.dyingTimer = 0;
+      continue;
+    }
+
+    const mobTop  = mob.y - SH;
+    const mobLeft = mob.x + 4;
+    const mobRight= mob.x + SW - 4;
+    const plLeft  = player.x + 4;
+    const plRight = player.x + SW - 4;
+
+    const overlapX = plRight > mobLeft && plLeft < mobRight;
+    if (!overlapX) continue;
+
+    const overlapY = player.y > mobTop && player.y - SH < mob.y;
+
+    if (!overlapY) continue;
+
+    // Игрок падает сверху на голову
+    if (player.vy > 0 && prevPlayerY <= mobTop + 10) {
+      mob.alive = false;
+      mob.dyingTimer = 20;
+      player.vy = JUMP_FORCE * 0.55; // отпрыгнуть вверх
+      score++;
+      playSquish();
+    } else {
+      // Боковое касание — отталкиваем игрока
+      const pushDir = player.x + SW / 2 < mob.x + SW / 2 ? -1 : 1;
+      player.x += pushDir * 5;
+    }
+  }
+}
+
+// ── Рисование ───────────────────────────────────────────────
+
+function drawSprite(palette, sprite, x, y, facingRight, legOffset) {
   for (let row = 0; row < 18; row++) {
     for (let col = 0; col < 8; col++) {
-      const color = PALETTE[STEVE[row][col]];
+      const color = palette[sprite[row][col]];
       if (!color) continue;
 
       let drawCol = col;
-      // Apply leg swing to lower half
       if (row >= 13) {
         if (col < 4) drawCol = col + (legOffset > 0 ? Math.round(legOffset * (row - 12) / 6) : 0);
         else         drawCol = col + (legOffset < 0 ? Math.round(legOffset * (row - 12) / 6) : 0);
       }
 
+      // flip для зеркала
+      const finalCol = facingRight ? drawCol : (7 - drawCol);
       ctx.fillStyle = color;
-      ctx.fillRect(drawCol * CELL, row * CELL, CELL, CELL);
+      ctx.fillRect(x + finalCol * CELL, y + row * CELL, CELL, CELL);
     }
   }
+}
+
+function drawSteve(x, y, facingRight, walking, frame) {
+  const legOffset = walking ? (frame === 0 ? 3 : -3) : 0;
+  drawSprite(PALETTE, STEVE, x, y, facingRight, legOffset);
+}
+
+function drawZombie(x, y, facingRight, walking, frame, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const legOffset = walking ? (frame === 0 ? 3 : -3) : 0;
+  drawSprite(ZOMBIE_PALETTE, ZOMBIE, x, y, facingRight, legOffset);
   ctx.restore();
+}
+
+function drawMobs() {
+  for (const mob of mobs) {
+    const alpha = mob.alive ? 1 : mob.dyingTimer / 20;
+    // При смерти — немного сжать (squish эффект)
+    if (!mob.alive) {
+      ctx.save();
+      const cx = mob.x + SW / 2;
+      const by = mob.y;
+      ctx.translate(cx, by);
+      const s = mob.dyingTimer / 20;
+      ctx.scale(1 + (1 - s) * 0.5, s);
+      ctx.translate(-cx, -by);
+    }
+    drawZombie(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
+    if (!mob.alive) ctx.restore();
+  }
 }
 
 function drawGround() {
@@ -180,7 +342,7 @@ function drawGround() {
 }
 
 function drawPlatform(p) {
-  const PH = 24; // визуальная высота платформы
+  const PH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
   ctx.fillStyle = '#8B5E3C';
@@ -189,7 +351,6 @@ function drawPlatform(p) {
   for (let bx = p.x; bx < p.x + p.w; bx += BLOCK) {
     ctx.fillRect(bx, p.y, Math.min(BLOCK - 1, p.x + p.w - bx), 4);
   }
-  // Тень снизу
   ctx.fillStyle = '#3A4A2080';
   ctx.fillRect(p.x + 4, p.y + PH, p.w - 4, 4);
 }
@@ -218,6 +379,15 @@ function drawCloud(cx, cy) {
   ctx.fillRect(cx,      cy + 8,  48, 16);
   ctx.fillRect(cx + 8,  cy,      32, 16);
   ctx.fillRect(cx + 16, cy - 8,  16, 16);
+}
+
+function drawHUD() {
+  // Тёмная плашка
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(8, 8, 130, 32);
+  ctx.fillStyle = '#FFD700';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText(`Score: ${score}`, 18, 30);
 }
 
 function update() {
@@ -280,6 +450,8 @@ function update() {
 
   // World bounds
   player.x = Math.max(0, Math.min(W - SW, player.x));
+
+  updateMobs();
 }
 
 function draw() {
@@ -287,7 +459,9 @@ function draw() {
   drawBackground();
   platforms.forEach(drawPlatform);
   drawGround();
+  drawMobs();
   drawSteve(player.x, player.y - SH, player.facingRight, input.left || input.right, player.walkFrame);
+  drawHUD();
 }
 
 function loop() {
