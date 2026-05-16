@@ -61,43 +61,45 @@ const player = {
   walkTimer: 0,
 };
 
-// Steve pixel art: 16×32 logical pixels, drawn at 2× scale = 32×64 on canvas
-// Each color value is an index into the palette
-// 0=transparent, 1=skin, 2=hair/dark, 3=shirt(blue), 4=pants(gray), 5=shoe(dark)
+// Steve pixel art: 8 wide × 18 tall, drawn at 5px per cell = 40×90
 const PALETTE = [
   null,       // 0 transparent
   '#C68642',  // 1 skin
-  '#3B2A1A',  // 2 hair/dark
-  '#3A5FCD',  // 3 shirt blue
-  '#666677',  // 4 pants gray
-  '#2A1A0A',  // 5 shoe dark
-  '#FFFFFF',  // 6 eyes white
-  '#3B2FCD',  // 7 shirt shadow
+  '#513710',  // 2 dark brown hair
+  '#4B8C9C',  // 3 teal shirt (Steve's iconic color)
+  '#2A3A8C',  // 4 dark blue pants
+  '#1A1008',  // 5 dark shoe
+  '#8888AA',  // 6 Steve's gray-blue eyes
+  '#2A5C6C',  // 7 shirt shadow (darker teal)
+  '#1A2860',  // 8 pants shadow
+  '#A06030',  // 9 skin shadow
 ];
 
-// Steve sprite: 8 wide × 16 tall (will be drawn at 4px per cell = 32×64)
+// Steve sprite: 8 wide × 18 tall (5px per cell = 40×90 on canvas)
 const STEVE = [
-  [0,2,2,2,2,2,2,0], // row 0  hair
-  [2,2,2,2,2,2,2,2], // row 1  hair
-  [2,1,1,1,1,1,1,2], // row 2  face
-  [2,1,6,1,1,6,1,2], // row 3  eyes
-  [2,1,1,1,1,1,1,2], // row 4  face
-  [2,1,2,1,1,2,1,2], // row 5  mouth
-  [2,1,1,1,1,1,1,2], // row 6  chin
-  [0,3,3,3,3,3,3,0], // row 7  chest top
-  [3,3,3,3,3,3,3,3], // row 8  chest
-  [3,7,3,3,3,3,7,3], // row 9  chest shadow
-  [3,3,3,3,3,3,3,3], // row 10 waist
-  [4,4,4,0,0,4,4,4], // row 11 hips
-  [4,4,0,0,0,0,4,4], // row 12 upper leg
-  [4,4,0,0,0,0,4,4], // row 13 upper leg
-  [4,4,0,0,0,0,4,4], // row 14 lower leg
-  [5,5,0,0,0,0,5,5], // row 15 shoes
+  [0,0,2,2,2,2,0,0], // row 0  hair top
+  [0,2,2,2,2,2,2,0], // row 1  hair
+  [2,2,2,2,2,2,2,2], // row 2  hair sides
+  [2,1,1,1,1,1,1,2], // row 3  forehead
+  [2,1,6,1,1,6,1,2], // row 4  eyes
+  [2,1,6,1,1,6,1,2], // row 5  eyes bottom
+  [2,1,1,1,1,1,1,2], // row 6  nose
+  [2,1,9,2,2,9,1,2], // row 7  mouth/chin
+  [0,3,3,3,3,3,3,0], // row 8  shoulders
+  [3,3,3,3,3,3,3,3], // row 9  chest top
+  [3,3,7,3,3,7,3,3], // row 10 chest
+  [3,3,3,3,3,3,3,3], // row 11 chest lower
+  [3,7,3,3,3,3,7,3], // row 12 waist
+  [4,4,4,0,0,4,4,4], // row 13 hips
+  [4,4,4,0,0,4,4,4], // row 14 upper legs
+  [4,8,4,0,0,4,8,4], // row 15 mid legs
+  [4,4,4,0,0,4,4,4], // row 16 lower legs
+  [5,5,5,0,0,5,5,5], // row 17 shoes
 ];
 
-const CELL = 4; // px per sprite cell
-const SW = 8 * CELL;  // sprite width  = 32
-const SH = 16 * CELL; // sprite height = 64
+const CELL = 5; // px per sprite cell
+const SW = 8 * CELL;  // sprite width  = 40
+const SH = 18 * CELL; // sprite height = 90
 
 function drawSteve(x, y, facingRight, walking, frame) {
   ctx.save();
@@ -112,16 +114,16 @@ function drawSteve(x, y, facingRight, walking, frame) {
   // Simple walk animation: shift leg pixels
   const legOffset = walking ? (frame === 0 ? 3 : -3) : 0;
 
-  for (let row = 0; row < 16; row++) {
+  for (let row = 0; row < 18; row++) {
     for (let col = 0; col < 8; col++) {
       const color = PALETTE[STEVE[row][col]];
       if (!color) continue;
 
       let drawCol = col;
       // Apply leg swing to lower half
-      if (row >= 11) {
-        if (col < 4) drawCol = col + (legOffset > 0 ? Math.round(legOffset * (row - 10) / 6) : 0);
-        else         drawCol = col + (legOffset < 0 ? Math.round(legOffset * (row - 10) / 6) : 0);
+      if (row >= 13) {
+        if (col < 4) drawCol = col + (legOffset > 0 ? Math.round(legOffset * (row - 12) / 6) : 0);
+        else         drawCol = col + (legOffset < 0 ? Math.round(legOffset * (row - 12) / 6) : 0);
       }
 
       ctx.fillStyle = color;
