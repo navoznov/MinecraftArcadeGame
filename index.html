@@ -430,9 +430,17 @@ function genOreBlocks(count, allBlocks) {
   }
   return result;
 }
-const _allOreBlocks      = [];
-const IRON_ORE_BLOCKS    = genOreBlocks(6, _allOreBlocks);
-const DIAMOND_ORE_BLOCKS = genOreBlocks(3, _allOreBlocks);
+const IRON_ORE_BLOCKS    = [];
+const DIAMOND_ORE_BLOCKS = [];
+
+function regenerateOreBlocks() {
+  const all = [];
+  IRON_ORE_BLOCKS.length = 0;
+  DIAMOND_ORE_BLOCKS.length = 0;
+  IRON_ORE_BLOCKS.push(...genOreBlocks(6, all));
+  DIAMOND_ORE_BLOCKS.push(...genOreBlocks(3, all));
+}
+regenerateOreBlocks();
 
 // Steve pixel art: 8 wide × 18 tall, drawn at 5px per cell = 40×90
 const PALETTE = [
@@ -1486,6 +1494,7 @@ function nextLevel() {
   levelKills    = 0;
   pipeVisible   = false;
   levelComplete = false;
+  if (isMine()) regenerateOreBlocks();
   mobSpeed      = Math.min(mobSpeed * 1.15, 4.0);
   spawnInterval = Math.max(Math.floor(spawnInterval * 0.85), 80);
   player.x = W / 2 - 20;
