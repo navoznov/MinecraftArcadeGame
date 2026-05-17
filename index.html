@@ -217,8 +217,8 @@ let mobs = [];
 let spawnTimer = 0;
 const SPAWN_INTERVAL = 240; // кадров между новыми мобами
 
-function spawnMob(startOnScreen = false) {
-  const fromRight = Math.random() > 0.5;
+function spawnMob(startOnScreen = false, fromRight = null) {
+  if (fromRight === null) fromRight = Math.random() > 0.5;
   const x = startOnScreen
     ? (fromRight ? W - SW - 20 : 20)
     : (fromRight ? W + 10 : -SW - 10);
@@ -233,9 +233,9 @@ function spawnMob(startOnScreen = false) {
   });
 }
 
-// Начальные мобы — сразу на экране у краёв
-spawnMob(true);
-spawnMob(true);
+// Начальные мобы — по одному с каждой стороны экрана
+spawnMob(true, false);
+spawnMob(true, true);
 
 function updateMobs() {
   // Спавн новых мобов
