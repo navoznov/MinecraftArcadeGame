@@ -132,9 +132,12 @@ const MARIO_MELODY = [
 
 let bgMusicActive = false;
 let bgMusicTimeout = null;
+let bgMusicGain = null;
 
 function scheduleBgMusicLoop() {
   if (!bgMusicActive) return;
+  bgMusicGain = audioCtx.createGain();
+  bgMusicGain.connect(audioCtx.destination);
   const t0 = audioCtx.currentTime + 0.05;
   let t = t0;
   for (const [freq, dur] of MARIO_MELODY) {
@@ -142,7 +145,7 @@ function scheduleBgMusicLoop() {
       const osc = audioCtx.createOscillator();
       const g   = audioCtx.createGain();
       osc.connect(g);
-      g.connect(audioCtx.destination);
+      g.connect(bgMusicGain);
       osc.type = 'square';
       osc.frequency.value = freq;
       g.gain.setValueAtTime(0.06, t);
@@ -167,6 +170,10 @@ function stopBgMusic() {
   bgMusicActive = false;
   clearTimeout(bgMusicTimeout);
   bgMusicTimeout = null;
+  if (bgMusicGain) {
+    bgMusicGain.gain.setValueAtTime(0, audioCtx.currentTime);
+    bgMusicGain = null;
+  }
 }
 
 function resetGame() {
