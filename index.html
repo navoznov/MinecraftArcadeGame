@@ -394,7 +394,7 @@ function updateMobs() {
   // Спавн новых мобов
   spawnTimer++;
   const aliveMobs = mobs.filter(m => m.alive).length;
-  if (spawnTimer >= spawnInterval && aliveMobs < 5) {
+  if (spawnTimer >= spawnInterval && aliveMobs < 5 && !pipeVisible) {
     spawnTimer = 0;
     spawnMob();
   }
@@ -571,74 +571,77 @@ function drawHUD() {
 
 function update() {
   pollGamepad();
-  const moving = input.left || input.right;
 
-  if (input.left) {
-    player.x -= MOVE_SPEED;
-    player.facingRight = false;
-  }
-  if (input.right) {
-    player.x += MOVE_SPEED;
-    player.facingRight = true;
-  }
+  if (!levelComplete) {
+    const moving = input.left || input.right;
 
-  // Walk animation
-  if (moving) {
-    player.walkTimer++;
-    if (player.walkTimer > 12) {
-      player.walkTimer = 0;
-      player.walkFrame = 1 - player.walkFrame;
+    if (input.left) {
+      player.x -= MOVE_SPEED;
+      player.facingRight = false;
     }
-  } else {
-    player.walkFrame = 0;
-    player.walkTimer = 0;
-  }
+    if (input.right) {
+      player.x += MOVE_SPEED;
+      player.facingRight = true;
+    }
 
-  // Jump
-  if (input.jump && player.onGround) {
-    player.vy = JUMP_FORCE;
+    // Walk animation
+    if (moving) {
+      player.walkTimer++;
+      if (player.walkTimer > 12) {
+        player.walkTimer = 0;
+        player.walkFrame = 1 - player.walkFrame;
+      }
+    } else {
+      player.walkFrame = 0;
+      player.walkTimer = 0;
+    }
+
+    // Jump
+    if (input.jump && player.onGround) {
+      player.vy = JUMP_FORCE;
+      player.onGround = false;
+      playPew();
+    }
+
+    // Gravity
+    player.vy += GRAVITY;
+    const prevY = player.y;
+    player.y += player.vy;
+
     player.onGround = false;
-    playPew();
-  }
 
-  // Gravity
-  player.vy += GRAVITY;
-  const prevY = player.y;
-  player.y += player.vy;
+    // Коллизия с землёй
+    if (player.y >= GROUND_TOP) {
+      player.y = GROUND_TOP;
+      player.vy = 0;
+      player.onGround = true;
+    }
 
-  player.onGround = false;
-
-  // Коллизия с землёй
-  if (player.y >= GROUND_TOP) {
-    player.y = GROUND_TOP;
-    player.vy = 0;
-    player.onGround = true;
-  }
-
-  // Коллизия с платформами (только приземление сверху)
-  if (player.vy >= 0) {
-    for (const p of platforms) {
-      if (prevY <= p.y && player.y >= p.y &&
-          player.x + SW > p.x + 4 && player.x < p.x + p.w - 4) {
-        player.y = p.y;
-        player.vy = 0;
-        player.onGround = true;
-        break;
+    // Коллизия с платформами (только приземление сверху)
+    if (player.vy >= 0) {
+      for (const p of platforms) {
+        if (prevY <= p.y && player.y >= p.y &&
+            player.x + SW > p.x + 4 && player.x < p.x + p.w - 4) {
+          player.y = p.y;
+          player.vy = 0;
+          player.onGround = true;
+          break;
+        }
       }
     }
-  }
 
-  // World bounds
-  player.x = Math.max(0, Math.min(W - SW, player.x));
+    // World bounds
+    player.x = Math.max(0, Math.min(W - SW, player.x));
 
-  // Коллизия с трубой — вход в следующий уровень
-  if (pipeVisible) {
-    const capLeft  = PIPE_X - PIPE_CAP_EXTRA;
-    const capRight = PIPE_X + PIPE_W + PIPE_CAP_EXTRA;
-    if (player.x + SW - 4 > capLeft && player.x + 4 < capRight) {
-      levelComplete = true;
-      stopBgMusic();
-      playPipeEnter();
+    // Коллизия с трубой — вход в следующий уровень
+    if (pipeVisible) {
+      const capLeft  = PIPE_X - PIPE_CAP_EXTRA;
+      const capRight = PIPE_X + PIPE_W + PIPE_CAP_EXTRA;
+      if (player.x + SW - 4 > capLeft && player.x + 4 < capRight) {
+        levelComplete = true;
+        stopBgMusic();
+        playPipeEnter();
+      }
     }
   }
 
@@ -733,7 +736,7 @@ function draw() {
 }
 
 function loop() {
-  if (!gameOver && !levelComplete) update();
+  if (!gameOver) update();
   draw();
   requestAnimationFrame(loop);
 }
