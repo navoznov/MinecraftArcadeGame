@@ -236,6 +236,7 @@ document.addEventListener('keydown', e => {
   if (!bgMusicActive && !gameOver && !levelComplete) startBgMusic();
   if (levelComplete && (e.key === ' ' || e.key === 'Enter')) { nextLevel(); return; }
   if (gameOver && (e.key === ' ' || e.key === 'Enter')) { resetGame(); return; }
+  if (!gameOver && e.key === 'n') { nextLevel(); return; }
   if (e.key === 'ArrowLeft')  keyInput.left  = true;
   if (e.key === 'ArrowRight') keyInput.right = true;
   if (e.key === ' ')          keyInput.jump  = true;
