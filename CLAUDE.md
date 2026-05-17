@@ -10,12 +10,6 @@ No build step. Open `index.html` directly in a browser:
 open index.html
 ```
 
-Or serve it locally to avoid any browser file-restrictions:
-
-```
-python3 -m http.server 8080
-```
-
 ## Architecture
 
 Everything lives in a single file: `index.html`. HTML, CSS, and game logic are all inline — no external scripts, no build tooling, no dependencies.
