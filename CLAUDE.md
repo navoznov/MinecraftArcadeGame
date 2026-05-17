@@ -15,6 +15,10 @@ git push -u origin feature/my-feature
 gh pr create --base main
 ```
 
+## Implemented Features
+
+The full list of implemented features and changelog is maintained in [README.md](README.md) under the **Changelog** section.
+
 ## Running the Game
 
 No build step. Open `index.html` directly in a browser:
