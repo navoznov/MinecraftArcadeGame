@@ -58,6 +58,40 @@ for (let i = 0; i < 70; i++) {
   });
 }
 
+// Mine / cave sky gradient
+const mineGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
+mineGradient.addColorStop(0, '#0E0C0A');
+mineGradient.addColorStop(1, '#1C1814');
+
+// Deterministic stone texture patches for cave background
+const CAVE_STONES = [];
+for (let i = 0; i < 55; i++) {
+  CAVE_STONES.push({
+    x: (i * 211 + 37) % (W - 40) + 4,
+    y: (i * 157 + 71) % (GROUND_TOP - 40) + 8,
+    w: (i % 4 + 1) * 14,
+    h: (i % 3 + 1) * 10,
+  });
+}
+
+// Deterministic coal ore spots
+const CAVE_ORES = [];
+for (let i = 0; i < 18; i++) {
+  CAVE_ORES.push({
+    x: (i * 317 + 83) % (W - 20) + 8,
+    y: (i * 193 + 61) % (GROUND_TOP - 28) + 8,
+  });
+}
+
+// Torch positions (placed on cave walls / near platforms)
+const MINE_TORCHES = [
+  { x: 24,      y: GROUND_TOP - 150 },
+  { x: 24,      y: GROUND_TOP - 285 },
+  { x: W - 52,  y: GROUND_TOP - 150 },
+  { x: W - 52,  y: GROUND_TOP - 285 },
+  { x: 362,     y: GROUND_TOP - 338 },
+];
+
 const keyInput = { left: false, right: false, jump: false };
 const input    = { left: false, right: false, jump: false };
 
@@ -494,7 +528,7 @@ function spawnPhantom() {
 }
 
 function updatePhantoms() {
-  if (!isNight()) { phantoms = []; return; }
+  if (!isNight() || isMine()) { phantoms = []; return; }
 
   phantomTimer++;
   if (phantomTimer >= spawnInterval && phantoms.length < 3 && !pipeVisible) {
@@ -658,6 +692,7 @@ function drawPhantoms() {
 }
 
 function drawGround() {
+  if (isMine()) { drawGroundMine(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -668,7 +703,23 @@ function drawGround() {
   }
 }
 
+function drawGroundMine() {
+  // Stone floor surface
+  ctx.fillStyle = '#5C5650';
+  ctx.fillRect(0, GROUND_TOP, W, 12);
+  // Deep stone / bedrock
+  ctx.fillStyle = '#3C3830';
+  ctx.fillRect(0, GROUND_TOP + 12, W, H - GROUND_TOP - 12);
+  // Stone block grid
+  ctx.fillStyle = '#464240';
+  for (let bx = 0; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, 5);
+    ctx.fillRect(bx, GROUND_TOP, 1, 12);
+  }
+}
+
 function drawPlatform(p) {
+  if (isMine()) { drawPlatformMine(p); return; }
   const PH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -682,11 +733,101 @@ function drawPlatform(p) {
   ctx.fillRect(p.x + 4, p.y + PH, p.w - 4, 4);
 }
 
+function drawPlatformMine(p) {
+  const ph = 24;
+  // Wooden plank body
+  ctx.fillStyle = '#7A5418';
+  ctx.fillRect(p.x, p.y, p.w, ph);
+  // Top surface (lighter wood)
+  ctx.fillStyle = '#B07C28';
+  ctx.fillRect(p.x, p.y, p.w, 8);
+  // Plank separators every 16 px
+  ctx.fillStyle = '#4A2C08';
+  for (let bx = p.x; bx < p.x + p.w; bx += 16) {
+    ctx.fillRect(bx, p.y, 2, ph);
+  }
+  // Wood grain lines on top surface
+  ctx.fillStyle = '#986618';
+  for (let bx = p.x; bx < p.x + p.w; bx += 16) {
+    ctx.fillRect(bx + 2, p.y + 3, 10, 2);
+  }
+  // Top highlight
+  ctx.fillStyle = '#C89030';
+  for (let bx = p.x; bx < p.x + p.w; bx += 16) {
+    ctx.fillRect(bx + 2, p.y + 1, 10, 2);
+  }
+  // Drop shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(p.x + 4, p.y + ph, p.w - 4, 4);
+}
+
 function isNight() {
   return level % 2 === 0;
 }
 
+function isMine() {
+  return level % 4 === 3 || level % 4 === 0;
+}
+
+function drawTorch(x, y) {
+  // Flame tip (white-yellow core)
+  ctx.fillStyle = '#FFFFA0';
+  ctx.fillRect(x + 3, y,     2, 3);
+  // Flame body (golden)
+  ctx.fillStyle = '#FFD700';
+  ctx.fillRect(x + 2, y + 2, 4, 3);
+  // Flame base (orange)
+  ctx.fillStyle = '#FF8800';
+  ctx.fillRect(x + 1, y + 4, 6, 3);
+  // Stick
+  ctx.fillStyle = '#7A4A14';
+  ctx.fillRect(x + 3, y + 7, 2, 9);
+  // Stick base
+  ctx.fillStyle = '#5A3008';
+  ctx.fillRect(x + 2, y + 14, 4, 2);
+}
+
+function drawBackgroundMine() {
+  ctx.fillStyle = mineGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  // Stone texture patches
+  const stoneShades = ['#1C1A16', '#201D18', '#181614', '#242018'];
+  for (const s of CAVE_STONES) {
+    ctx.fillStyle = stoneShades[(s.x + s.y) % 4];
+    ctx.fillRect(s.x, s.y, s.w, s.h);
+    // Edge highlight to give stone block feel
+    ctx.fillStyle = '#2A2620';
+    ctx.fillRect(s.x, s.y, s.w, 2);
+    ctx.fillRect(s.x, s.y, 2, s.h);
+  }
+
+  // Coal ore veins
+  for (const ore of CAVE_ORES) {
+    ctx.fillStyle = '#0C0C0F';
+    ctx.fillRect(ore.x,     ore.y,     10, 8);
+    ctx.fillRect(ore.x + 6, ore.y + 6, 8,  6);
+    ctx.fillStyle = '#1A1A1E';
+    ctx.fillRect(ore.x + 2, ore.y + 2, 4, 4);
+  }
+
+  // Torch warm glow (ambient lighting)
+  for (const t of MINE_TORCHES) {
+    const gx = t.x + 4, gy = t.y + 6;
+    const glow = ctx.createRadialGradient(gx, gy, 2, gx, gy, 110);
+    glow.addColorStop(0,    'rgba(255, 165, 20, 0.30)');
+    glow.addColorStop(0.35, 'rgba(255, 130, 10, 0.14)');
+    glow.addColorStop(1,    'rgba(255, 100,  0, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, GROUND_TOP);
+  }
+
+  // Draw torch sprites on top
+  for (const t of MINE_TORCHES) drawTorch(t.x, t.y);
+}
+
 function drawBackground() {
+  if (isMine()) { drawBackgroundMine(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
