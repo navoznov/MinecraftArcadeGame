@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Each feature must be developed in a separate branch. After pushing, create a pull request into `main`.
 
+When implementing any feature, update `README.md` to reflect the changes — add a changelog entry describing what was added or modified.
+
 ```
 git checkout -b feature/my-feature
 # ... make changes, commit ...
