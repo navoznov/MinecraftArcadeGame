@@ -81,6 +81,29 @@ function playSquish() {
   osc.stop(now + 0.18);
 }
 
+function playGameOver() {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const notes = [
+    { freq: 440, t: 0.00 },
+    { freq: 330, t: 0.28 },
+    { freq: 220, t: 0.56 },
+  ];
+  for (const { freq, t } of notes) {
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const at = audioCtx.currentTime + t;
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, at);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.45, at + 0.22);
+    gain.gain.setValueAtTime(0.18, at);
+    gain.gain.exponentialRampToValueAtTime(0.001, at + 0.22);
+    osc.start(at);
+    osc.stop(at + 0.22);
+  }
+}
+
 function resetGame() {
   player.x = W / 2 - 20;
   player.y = GROUND_TOP;
@@ -314,6 +337,7 @@ function updateMobs() {
     } else {
       // Боковое касание — смерть
       gameOver = true;
+      playGameOver();
     }
   }
 }
