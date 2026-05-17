@@ -104,6 +104,71 @@ function playGameOver() {
   }
 }
 
+// [freq Hz (0=rest), duration s]  — Super Mario Bros. Ground Theme, 200 BPM
+const MARIO_MELODY = [
+  // Intro
+  [659,.15],[0,.15],[659,.15],[0,.15],[659,.15],[0,.15],[523,.15],[659,.30],
+  [784,.60],[0,.30],[392,.60],
+  // Section A
+  [523,.45],[392,.30],[0,.30],[330,.45],[0,.15],
+  [440,.30],[0,.15],[494,.30],[0,.15],[466,.30],[440,.30],
+  [392,.10],[659,.10],[784,.10],[880,.30],[698,.15],[784,.15],
+  [659,.30],[523,.15],[587,.15],[494,.45],[0,.15],
+  // Section A repeat
+  [523,.45],[392,.30],[0,.30],[330,.45],[0,.15],
+  [440,.30],[0,.15],[494,.30],[0,.15],[466,.30],[440,.30],
+  [392,.10],[659,.10],[784,.10],[880,.30],[698,.15],[784,.15],
+  [659,.30],[523,.15],[587,.15],[494,.45],[0,.15],
+  // Section B
+  [784,.15],[0,.30],[698,.15],[0,.15],[659,.15],[0,.30],
+  [554,.15],[587,.15],[0,.15],[523,.15],[0,.15],
+  [330,.15],[392,.15],[0,.15],[440,.15],[0,.15],[494,.15],[0,.30],
+  // Section A final
+  [523,.45],[392,.30],[0,.30],[330,.45],[0,.15],
+  [440,.30],[0,.15],[494,.30],[0,.15],[466,.30],[440,.30],
+  [392,.10],[659,.10],[784,.10],[880,.30],[698,.15],[784,.15],
+  [659,.30],[523,.15],[587,.15],[494,.45],[0,.30],
+];
+
+let bgMusicActive = false;
+let bgMusicTimeout = null;
+
+function scheduleBgMusicLoop() {
+  if (!bgMusicActive) return;
+  const t0 = audioCtx.currentTime + 0.05;
+  let t = t0;
+  for (const [freq, dur] of MARIO_MELODY) {
+    if (freq > 0) {
+      const osc = audioCtx.createOscillator();
+      const g   = audioCtx.createGain();
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      g.gain.setValueAtTime(0.06, t);
+      g.gain.setValueAtTime(0.06, t + dur * 0.82);
+      g.gain.linearRampToValueAtTime(0, t + dur);
+      osc.start(t);
+      osc.stop(t + dur);
+    }
+    t += dur;
+  }
+  bgMusicTimeout = setTimeout(scheduleBgMusicLoop, (t - t0) * 1000);
+}
+
+function startBgMusic() {
+  if (bgMusicActive) return;
+  audioCtx.resume();
+  bgMusicActive = true;
+  scheduleBgMusicLoop();
+}
+
+function stopBgMusic() {
+  bgMusicActive = false;
+  clearTimeout(bgMusicTimeout);
+  bgMusicTimeout = null;
+}
+
 function resetGame() {
   player.x = W / 2 - 20;
   player.y = GROUND_TOP;
@@ -118,9 +183,11 @@ function resetGame() {
   spawnMob(true, false);
   spawnMob(true, true);
   gameOver = false;
+  startBgMusic();
 }
 
 document.addEventListener('keydown', e => {
+  if (!bgMusicActive && !gameOver) startBgMusic();
   if (gameOver && (e.key === ' ' || e.key === 'Enter')) { resetGame(); return; }
   if (e.key === 'ArrowLeft')  keyInput.left  = true;
   if (e.key === 'ArrowRight') keyInput.right = true;
@@ -148,6 +215,7 @@ function pollGamepad() {
     gpRight = stickX >  0.3 || !!(gp.buttons[15]?.pressed);
     gpJump  = !!(gp.buttons[0]?.pressed);
     if (gpLeft || gpRight || gpJump) audioCtx.resume();
+    if (!bgMusicActive && !gameOver && (gpLeft || gpRight || gpJump)) startBgMusic();
     if (gameOver && gpJump) { resetGame(); return; }
     break;
   }
@@ -337,6 +405,7 @@ function updateMobs() {
     } else {
       // Боковое касание — смерть
       gameOver = true;
+      stopBgMusic();
       playGameOver();
     }
   }
