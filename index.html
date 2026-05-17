@@ -177,7 +177,7 @@ function scheduleBgMusicLoop() {
 }
 
 function startBgMusic() {
-  if (bgMusicActive) return;
+  if (bgMusicActive || bgMusicMuted) return;
   audioCtx.resume();
   bgMusicActive = true;
   scheduleBgMusicLoop();
@@ -370,6 +370,24 @@ const PIPE_W         = 44;  // ширина тела
 const PIPE_H         = 60;  // высота от земли
 const PIPE_CAP_EXTRA = 4;   // выступ крышки с каждой стороны
 
+let bgMusicMuted = false;
+const MUTE_BTN = { x: W - 56, y: 8, w: 48, h: 32 };
+
+canvas.addEventListener('click', e => {
+  const r  = canvas.getBoundingClientRect();
+  const cx = (e.clientX - r.left) * (W / r.width);
+  const cy = (e.clientY - r.top)  * (H / r.height);
+  if (cx >= MUTE_BTN.x && cx <= MUTE_BTN.x + MUTE_BTN.w &&
+      cy >= MUTE_BTN.y && cy <= MUTE_BTN.y + MUTE_BTN.h) {
+    bgMusicMuted = !bgMusicMuted;
+    if (bgMusicMuted) {
+      stopBgMusic();
+    } else if (!gameOver && !levelComplete) {
+      startBgMusic();
+    }
+  }
+});
+
 function spawnMob(startOnScreen = false, fromRight = null) {
   if (fromRight === null) fromRight = Math.random() > 0.5;
   const x = startOnScreen
@@ -538,14 +556,14 @@ function drawBackground() {
   ctx.fillStyle = skyGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
 
-  // Sun
+  // Sun (below HUD label on the left)
   ctx.fillStyle = '#FFD700';
-  ctx.fillRect(700, 30, 40, 40);
+  ctx.fillRect(8, 48, 40, 40);
   ctx.fillStyle = '#FFF176';
-  ctx.fillRect(694, 36, 6, 6);
-  ctx.fillRect(750, 36, 6, 6);
-  ctx.fillRect(718, 24, 6, 6);
-  ctx.fillRect(718, 70, 6, 6);
+  ctx.fillRect(2,  62, 6, 6);  // left ray
+  ctx.fillRect(50, 62, 6, 6);  // right ray
+  ctx.fillRect(22, 42, 6, 6);  // top ray
+  ctx.fillRect(22, 88, 6, 6);  // bottom ray
 
   // Clouds (blocky)
   drawCloud(100, 60);
@@ -561,12 +579,21 @@ function drawCloud(cx, cy) {
 }
 
 function drawHUD() {
-  // Тёмная плашка
+  // Score / level
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
   ctx.fillRect(8, 8, 210, 32);
   ctx.fillStyle = '#FFD700';
   ctx.font = 'bold 18px monospace';
   ctx.fillText(`Score: ${score}   Lv.${level}`, 18, 30);
+
+  // Mute button
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(MUTE_BTN.x, MUTE_BTN.y, MUTE_BTN.w, MUTE_BTN.h);
+  ctx.fillStyle = bgMusicMuted ? '#FF6666' : '#FFD700';
+  ctx.font = 'bold 18px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(bgMusicMuted ? '✕♪' : '♪', MUTE_BTN.x + MUTE_BTN.w / 2, MUTE_BTN.y + 22);
+  ctx.textAlign = 'left';
 }
 
 function update() {
