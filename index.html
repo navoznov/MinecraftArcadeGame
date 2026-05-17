@@ -39,10 +39,24 @@ const BLOCK = 32;
 // GROUND_TOP — Y-координата поверхности земли (куда встают ногами)
 const GROUND_TOP = H - 48;
 
-// Sky gradient
-const skyGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
-skyGradient.addColorStop(0, '#87CEEB');
-skyGradient.addColorStop(1, '#C9E8F5');
+// Sky gradients — day and night
+const dayGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
+dayGradient.addColorStop(0, '#87CEEB');
+dayGradient.addColorStop(1, '#C9E8F5');
+
+const nightGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
+nightGradient.addColorStop(0, '#050518');
+nightGradient.addColorStop(1, '#0D1033');
+
+// Deterministic star positions
+const STARS = [];
+for (let i = 0; i < 70; i++) {
+  STARS.push({
+    x: (i * 293 + 47) % (W - 20) + 10,
+    y: (i * 137 + 23) % (GROUND_TOP - 40) + 10,
+    s: i % 5 === 0 ? 3 : 2,
+  });
+}
 
 const keyInput = { left: false, right: false, jump: false };
 const input    = { left: false, right: false, jump: false };
@@ -552,23 +566,47 @@ function drawPlatform(p) {
   ctx.fillRect(p.x + 4, p.y + PH, p.w - 4, 4);
 }
 
+function isNight() {
+  return level % 2 === 0;
+}
+
 function drawBackground() {
-  ctx.fillStyle = skyGradient;
+  const night = isNight();
+  ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
 
-  // Sun (below HUD label on the left)
-  ctx.fillStyle = '#FFD700';
-  ctx.fillRect(8, 48, 40, 40);
-  ctx.fillStyle = '#FFF176';
-  ctx.fillRect(2,  62, 6, 6);  // left ray
-  ctx.fillRect(50, 62, 6, 6);  // right ray
-  ctx.fillRect(22, 42, 6, 6);  // top ray
-  ctx.fillRect(22, 88, 6, 6);  // bottom ray
+  if (night) {
+    // Stars
+    ctx.fillStyle = '#FFFFFF';
+    for (const s of STARS) ctx.fillRect(s.x, s.y, s.s, s.s);
 
-  // Clouds (blocky)
-  drawCloud(100, 60);
-  drawCloud(350, 40);
-  drawCloud(580, 70);
+    // Moon
+    ctx.fillStyle = '#E8E8D0';
+    ctx.fillRect(8, 48, 40, 40);
+    ctx.fillStyle = '#D0D0A8';
+    ctx.fillRect(2,  62, 6, 6);
+    ctx.fillRect(50, 62, 6, 6);
+    ctx.fillRect(22, 42, 6, 6);
+    ctx.fillRect(22, 88, 6, 6);
+    // Moon craters
+    ctx.fillStyle = '#C0C098';
+    ctx.fillRect(16, 56, 8, 8);
+    ctx.fillRect(28, 68, 6, 6);
+  } else {
+    // Sun (below HUD label on the left)
+    ctx.fillStyle = '#FFD700';
+    ctx.fillRect(8, 48, 40, 40);
+    ctx.fillStyle = '#FFF176';
+    ctx.fillRect(2,  62, 6, 6);  // left ray
+    ctx.fillRect(50, 62, 6, 6);  // right ray
+    ctx.fillRect(22, 42, 6, 6);  // top ray
+    ctx.fillRect(22, 88, 6, 6);  // bottom ray
+
+    // Clouds (blocky)
+    drawCloud(100, 60);
+    drawCloud(350, 40);
+    drawCloud(580, 70);
+  }
 }
 
 function drawCloud(cx, cy) {
