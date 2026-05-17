@@ -267,6 +267,9 @@ function resetGame() {
   gameOver = false;
   paused = false;
   inventoryOpen = false;
+  inventory = ['apple', null, null, null, null, null, null, null, null];
+  handSlot = null;
+  initWorldItems();
   startBgMusic();
 }
 
@@ -508,8 +511,20 @@ const IHAND_X = IGRID_X;
 const IHAND_Y = IGRID_Y + 3 * (ISLOT + IGAP) - IGAP + 36;  // 306
 
 // 9 inventory slots (3×3), item ids or null
-let inventory = ['sword', 'pickaxe', 'apple', null, null, null, null, null, null];
+let inventory = ['apple', null, null, null, null, null, null, null, null];
 let handSlot  = null;
+
+// Items lying on level platforms
+let worldItems = [];
+
+function initWorldItems() {
+  worldItems = [];
+  const top = platforms[5]; // highest platform
+  const ix = top.x + Math.floor((top.w - ISLOT) / 2);
+  const iy = top.y - ISLOT;
+  if (level === 1) worldItems.push({ id: 'sword',   x: ix, y: iy });
+  else if (level === 2) worldItems.push({ id: 'pickaxe', x: ix, y: iy });
+}
 
 canvas.addEventListener('click', e => {
   const r  = canvas.getBoundingClientRect();
@@ -575,6 +590,7 @@ function spawnMob(startOnScreen = false, fromRight = null) {
 // Начальные мобы — по одному с каждой стороны экрана
 spawnMob(true, false);
 spawnMob(true, true);
+initWorldItems();
 
 function spawnPhantom() {
   const fromRight = Math.random() > 0.5;
@@ -1037,6 +1053,20 @@ function drawItemIcon(id, x, y) {
   }
 }
 
+function drawWorldItems() {
+  for (const item of worldItems) {
+    // Drop shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(item.x + 3, item.y + 3, ISLOT, ISLOT);
+    // Slot-like background
+    ctx.fillStyle = '#8B8B8B';
+    ctx.fillRect(item.x, item.y, ISLOT, ISLOT);
+    ctx.fillStyle = '#595959';
+    ctx.fillRect(item.x + 4, item.y + 4, ISLOT - 8, ISLOT - 8);
+    drawItemIcon(item.id, item.x, item.y);
+  }
+}
+
 function drawSlot(sx, sy, item) {
   // Raised outer bevel
   ctx.fillStyle = '#FFFFFF';
@@ -1177,6 +1207,17 @@ function update() {
     // World bounds
     player.x = Math.max(0, Math.min(W - SW, player.x));
 
+    // Item pickup
+    for (let i = worldItems.length - 1; i >= 0; i--) {
+      const item = worldItems[i];
+      const overlapX = player.x + SW > item.x && player.x < item.x + ISLOT;
+      const overlapY = player.y > item.y && player.y - SH < item.y + ISLOT;
+      if (overlapX && overlapY) {
+        const slot = inventory.indexOf(null);
+        if (slot >= 0) { inventory[slot] = item.id; worldItems.splice(i, 1); }
+      }
+    }
+
     // Коллизия с трубой — вход в следующий уровень
     if (pipeVisible) {
       const capLeft  = PIPE_X - PIPE_CAP_EXTRA;
@@ -1251,6 +1292,7 @@ function nextLevel() {
   phantoms = [];
   phantomTimer = Math.floor(spawnInterval / 2);
   paused = false;
+  initWorldItems();
   startBgMusic();
 }
 
@@ -1289,6 +1331,7 @@ function draw() {
   platforms.forEach(drawPlatform);
   drawGround();
   if (pipeVisible) drawPipe(PIPE_X, GROUND_TOP);
+  drawWorldItems();
   drawPhantoms();
   drawMobs();
   drawSteve(player.x, player.y - SH, player.facingRight, input.left || input.right, player.walkFrame);
