@@ -53,6 +53,18 @@ for (let i = 0; i < 55; i++) {
   });
 }
 
+// Forest trunk positions (decorative only — no collision)
+const FOREST_TRUNKS = [
+  { x: 110, w: 26 },
+  { x: 400, w: 30 },
+  { x: 628, w: 26 },
+  { x: 208, w: 22 },
+  { x: 508, w: 24 },
+  { x: 338, w: 28 },
+  { x: 52,  w: 18 },
+  { x: 718, w: 20 },
+];
+
 // Deterministic coal ore spots
 const CAVE_ORES = [];
 for (let i = 0; i < 18; i++) {
@@ -542,6 +554,7 @@ function drawPhantoms() {
 
 function drawGround() {
   if (isMine()) { drawGroundMine(); return; }
+  if (isForest()) { drawGroundForest(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -566,6 +579,7 @@ function drawGroundMine() {
 
 function drawPlatform(p) {
   if (isMine()) { drawPlatformMine(p); return; }
+  if (isForest()) { drawPlatformBranch(p); return; }
   const platH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -606,7 +620,11 @@ function isNight() {
 }
 
 function isMine() {
-  return level % 4 === 3 || level % 4 === 0;
+  return level % 4 === 3;
+}
+
+function isForest() {
+  return level % 4 === 0;
 }
 
 function drawTorch(x, y) {
@@ -689,8 +707,92 @@ function drawBackgroundMine() {
   for (const t of MINE_TORCHES) drawTorch(t.x, t.y);
 }
 
+function drawBackgroundForest() {
+  ctx.fillStyle = nightGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  ctx.fillStyle = '#FFFFFF';
+  for (const s of STARS) ctx.fillRect(s.x, s.y, s.s, s.s);
+
+  ctx.fillStyle = '#E8E8D0';
+  ctx.fillRect(8, 48, 40, 40);
+  ctx.fillStyle = '#D0D0A8';
+  ctx.fillRect(2,  62, 6, 6);
+  ctx.fillRect(50, 62, 6, 6);
+  ctx.fillRect(22, 42, 6, 6);
+  ctx.fillRect(22, 88, 6, 6);
+  ctx.fillStyle = '#C0C098';
+  ctx.fillRect(16, 56, 8, 8);
+  ctx.fillRect(28, 68, 6, 6);
+
+  // Distant tree silhouettes in background
+  const bgTrees = [
+    { x: 20,  h: 150 }, { x: 160, h: 125 }, { x: 285, h: 162 },
+    { x: 440, h: 138 }, { x: 575, h: 155 }, { x: 700, h: 128 }, { x: 755, h: 142 },
+  ];
+  ctx.fillStyle = '#0A1808';
+  for (const t of bgTrees) {
+    ctx.fillRect(t.x + 6, GROUND_TOP - t.h, 10, t.h);
+    ctx.fillRect(t.x,     GROUND_TOP - t.h - 20, 22, 22);
+    ctx.fillRect(t.x + 4, GROUND_TOP - t.h - 38, 14, 22);
+    ctx.fillRect(t.x + 7, GROUND_TOP - t.h - 52, 8,  18);
+  }
+}
+
+function drawGroundForest() {
+  ctx.fillStyle = '#243818';
+  ctx.fillRect(0, GROUND_TOP, W, 12);
+  ctx.fillStyle = '#141E0C';
+  ctx.fillRect(0, GROUND_TOP + 12, W, H - GROUND_TOP - 12);
+  ctx.fillStyle = '#2E4820';
+  for (let bx = 0; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, 5);
+  }
+  ctx.fillStyle = '#1A2C10';
+  for (let bx = 12; bx < W; bx += 48) {
+    ctx.fillRect(bx, GROUND_TOP + 4, 4, 8);
+  }
+}
+
+function drawPlatformBranch(p) {
+  const platH = 24;
+  ctx.fillStyle = '#4A2A0C';
+  ctx.fillRect(p.x, p.y, p.w, platH);
+  ctx.fillStyle = '#7A4A20';
+  ctx.fillRect(p.x, p.y, p.w, 9);
+  ctx.fillStyle = '#331A06';
+  for (let bx = p.x; bx < p.x + p.w; bx += 18) {
+    ctx.fillRect(bx, p.y, 2, platH);
+  }
+  ctx.fillStyle = '#9A6030';
+  for (let bx = p.x; bx < p.x + p.w; bx += 18) {
+    ctx.fillRect(bx + 3, p.y + 1, 12, 3);
+  }
+  ctx.fillStyle = '#2A5A18';
+  ctx.fillRect(p.x + 5, p.y, 10, 4);
+  ctx.fillRect(p.x + p.w - 20, p.y, 14, 3);
+  if (p.w > 100) ctx.fillRect(p.x + Math.floor(p.w / 2) - 6, p.y, 12, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
+}
+
+function drawForestTrees() {
+  for (const t of FOREST_TRUNKS) {
+    ctx.fillStyle = '#3C1E08';
+    ctx.fillRect(t.x, 0, t.w, GROUND_TOP);
+    ctx.fillStyle = '#6B3A18';
+    ctx.fillRect(t.x + 4, 0, Math.floor(t.w * 0.35), GROUND_TOP);
+    ctx.fillStyle = '#2A1204';
+    for (let ty = 20; ty < GROUND_TOP; ty += 32) {
+      ctx.fillRect(t.x, ty, t.w, 2);
+    }
+    ctx.fillRect(t.x + t.w - 3, 0, 3, GROUND_TOP);
+  }
+}
+
 function drawBackground() {
   if (isMine()) { drawBackgroundMine(); return; }
+  if (isForest()) { drawBackgroundForest(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
@@ -1127,6 +1229,7 @@ function drawGameOver() {
 function draw() {
   ctx.clearRect(0, 0, W, H);
   drawBackground();
+  if (isForest()) drawForestTrees();
   platforms.forEach(drawPlatform);
   drawGround();
   if (pipeVisible) drawPipe(PIPE_X, GROUND_TOP);
