@@ -44,7 +44,8 @@ const skyGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
 skyGradient.addColorStop(0, '#87CEEB');
 skyGradient.addColorStop(1, '#C9E8F5');
 
-const input = { left: false, right: false, jump: false };
+const keyInput = { left: false, right: false, jump: false };
+const input    = { left: false, right: false, jump: false };
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -81,16 +82,38 @@ function playSquish() {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft')  input.left  = true;
-  if (e.key === 'ArrowRight') input.right = true;
-  if (e.key === ' ')          input.jump  = true;
+  if (e.key === 'ArrowLeft')  keyInput.left  = true;
+  if (e.key === 'ArrowRight') keyInput.right = true;
+  if (e.key === ' ')          keyInput.jump  = true;
   if (e.key === ' ')          e.preventDefault();
 });
 document.addEventListener('keyup', e => {
-  if (e.key === 'ArrowLeft')  input.left  = false;
-  if (e.key === 'ArrowRight') input.right = false;
-  if (e.key === ' ')          input.jump  = false;
+  if (e.key === 'ArrowLeft')  keyInput.left  = false;
+  if (e.key === 'ArrowRight') keyInput.right = false;
+  if (e.key === ' ')          keyInput.jump  = false;
 });
+
+// Xbox Standard Mapping:
+//   axes[0]      — left stick X
+//   buttons[0]   — A (прыжок)
+//   buttons[14]  — D-pad Left
+//   buttons[15]  — D-pad Right
+function pollGamepad() {
+  const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+  let gpLeft = false, gpRight = false, gpJump = false;
+  for (const gp of gamepads) {
+    if (!gp) continue;
+    const stickX = gp.axes[0] ?? 0;
+    gpLeft  = stickX < -0.3 || !!(gp.buttons[14]?.pressed);
+    gpRight = stickX >  0.3 || !!(gp.buttons[15]?.pressed);
+    gpJump  = !!(gp.buttons[0]?.pressed);
+    if (gpLeft || gpRight || gpJump) audioCtx.resume();
+    break;
+  }
+  input.left  = keyInput.left  || gpLeft;
+  input.right = keyInput.right || gpRight;
+  input.jump  = keyInput.jump  || gpJump;
+}
 
 const player = {
   x: W / 2 - 20,
@@ -391,6 +414,7 @@ function drawHUD() {
 }
 
 function update() {
+  pollGamepad();
   const moving = input.left || input.right;
 
   if (input.left) {
