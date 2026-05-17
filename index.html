@@ -83,23 +83,29 @@ for (let i = 0; i < 18; i++) {
   });
 }
 
-// Deterministic iron ore blocks embedded in cave walls
-const IRON_ORE_BLOCKS = [];
-for (let i = 0; i < 12; i++) {
-  IRON_ORE_BLOCKS.push({
-    x: (i * 271 + 53) % (W - 32) + 8,
-    y: (i * 181 + 43) % (GROUND_TOP - 48) + 16,
-  });
+// Generate ore blocks with minimum spacing so they never overlap.
+// allBlocks is shared between iron and diamond so neither set overlaps the other.
+function genOreBlocks(count, seed0, allBlocks) {
+  let seed = seed0;
+  const result = [];
+  let attempts = 0;
+  while (result.length < count && attempts < 2000) {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    const x = seed % (W - 32) + 8;
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    const y = seed % (GROUND_TOP - 48) + 16;
+    if (!allBlocks.some(b => Math.hypot(b.x - x, b.y - y) < 40)) {
+      const block = { x, y };
+      result.push(block);
+      allBlocks.push(block);
+    }
+    attempts++;
+  }
+  return result;
 }
-
-// Deterministic diamond ore blocks (rarer, fewer)
-const DIAMOND_ORE_BLOCKS = [];
-for (let i = 0; i < 6; i++) {
-  DIAMOND_ORE_BLOCKS.push({
-    x: (i * 373 + 119) % (W - 32) + 8,
-    y: (i * 241 + 97) % (GROUND_TOP - 48) + 16,
-  });
-}
+const _allOreBlocks    = [];
+const IRON_ORE_BLOCKS    = genOreBlocks(6, 12345, _allOreBlocks);
+const DIAMOND_ORE_BLOCKS = genOreBlocks(3, 67890, _allOreBlocks);
 
 // Torch positions (placed on cave walls / near platforms)
 const MINE_TORCHES = [
