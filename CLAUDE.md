@@ -29,7 +29,17 @@ open index.html
 
 ## Architecture
 
-Everything lives in a single file: `index.html`. HTML, CSS, and game logic are all inline — no external scripts, no build tooling, no dependencies.
+The project is split into four files — no build tooling, no dependencies:
+
+| File | Contents |
+|------|----------|
+| `index.html` | HTML skeleton, `<link>` to CSS, three `<script src>` tags |
+| `style.css` | Page and canvas styles |
+| `sprites.js` | Sprite pixel-art arrays (`STEVE`, `ZOMBIE`, `PHANTOM`), palettes, dimensions (`CELL`, `SW`, `SH`, `PW`, `PH`), and the `drawSprite()` utility |
+| `audio.js` | `audioCtx`, all `play*()` sound functions, `MARIO_MELODY` data, background-music state and `startBgMusic`/`stopBgMusic` |
+| `game.js` | Everything else: canvas/constants, game state, physics, all `draw*()` and `update()` functions, input handling, game loop |
+
+All variables are global — scripts share scope via plain `<script src>` tags loaded in order: `sprites.js` → `audio.js` → `game.js`.
 
 ### Coordinate System
 
