@@ -49,6 +49,34 @@ function playPipeEnter() {
   osc.stop(now + 0.6);
 }
 
+function playPortalEnter() {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const osc1 = audioCtx.createOscillator();
+  const gain1 = audioCtx.createGain();
+  osc1.connect(gain1);
+  gain1.connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+  osc1.type = 'sawtooth';
+  osc1.frequency.setValueAtTime(60, now);
+  osc1.frequency.exponentialRampToValueAtTime(28, now + 0.9);
+  gain1.gain.setValueAtTime(0.18, now);
+  gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+  osc1.start(now);
+  osc1.stop(now + 0.9);
+  const osc2 = audioCtx.createOscillator();
+  const gain2 = audioCtx.createGain();
+  osc2.connect(gain2);
+  gain2.connect(audioCtx.destination);
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(180, now + 0.1);
+  osc2.frequency.exponentialRampToValueAtTime(480, now + 0.6);
+  gain2.gain.setValueAtTime(0, now);
+  gain2.gain.linearRampToValueAtTime(0.10, now + 0.2);
+  gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+  osc2.start(now + 0.1);
+  osc2.stop(now + 0.9);
+}
+
 function playGameOver() {
   if (audioCtx.state === 'suspended') audioCtx.resume();
   const notes = [

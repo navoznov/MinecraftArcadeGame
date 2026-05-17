@@ -42,6 +42,33 @@ const mineGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
 mineGradient.addColorStop(0, '#0E0C0A');
 mineGradient.addColorStop(1, '#1C1814');
 
+// Nether sky gradient
+const netherGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
+netherGradient.addColorStop(0, '#0A0002');
+netherGradient.addColorStop(1, '#200408');
+
+// Deterministic netherrack wall patches (background texture)
+const NETHER_STONES = [];
+for (let i = 0; i < 45; i++) {
+  NETHER_STONES.push({
+    x: (i * 251 + 43) % (W - 40) + 4,
+    y: (i * 167 + 79) % (GROUND_TOP - 40) + 8,
+    w: (i % 4 + 1) * 14,
+    h: (i % 3 + 1) * 10,
+  });
+}
+
+// Deterministic lava pools in Nether background
+const NETHER_LAVA_POOLS = [];
+for (let i = 0; i < 8; i++) {
+  NETHER_LAVA_POOLS.push({
+    x: (i * 379 + 61) % (W - 60) + 20,
+    y: (i * 221 + 91) % (GROUND_TOP - 30) + 10,
+    w: (i % 3 + 1) * 16 + 16,
+    h: (i % 2 + 1) * 6 + 4,
+  });
+}
+
 // Deterministic stone texture patches for cave background
 const CAVE_STONES = [];
 for (let i = 0; i < 55; i++) {
@@ -97,6 +124,7 @@ let levelComplete = false;
 let level       = 1;
 let levelKills  = 0;
 let pipeVisible = false;
+let portalFrame = 0;
 
 const PIPE_X         = 700;
 const PIPE_W         = 44;
@@ -209,6 +237,7 @@ function resetGame() {
   level         = 1;
   levelKills    = 0;
   pipeVisible   = false;
+  portalFrame   = 0;
   levelComplete = false;
   mobSpeed      = 1.4;
   spawnInterval = 240;
@@ -444,7 +473,7 @@ function spawnPhantom() {
 }
 
 function updatePhantoms() {
-  if (!isNight() || isMine()) { phantoms = []; return; }
+  if (!isNight() || isMine() || isNether()) { phantoms = []; return; }
 
   phantomTimer++;
   if (phantomTimer >= spawnInterval && phantoms.length < 3 && !pipeVisible) {
@@ -583,6 +612,7 @@ function drawPhantoms() {
 function drawGround() {
   if (isMine()) { drawGroundMine(); return; }
   if (isForest()) { drawGroundForest(); return; }
+  if (isNether()) { drawGroundNether(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -605,9 +635,26 @@ function drawGroundMine() {
   }
 }
 
+function drawGroundNether() {
+  ctx.fillStyle = '#5A1008';
+  ctx.fillRect(0, GROUND_TOP, W, 12);
+  ctx.fillStyle = '#3D0805';
+  ctx.fillRect(0, GROUND_TOP + 12, W, H - GROUND_TOP - 12);
+  ctx.fillStyle = '#7A1410';
+  for (let bx = 0; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, 5);
+    ctx.fillRect(bx, GROUND_TOP, 1, 12);
+  }
+  ctx.fillStyle = '#FF4400';
+  for (let bx = 8; bx < W; bx += 64) {
+    ctx.fillRect(bx, GROUND_TOP + 6, 3, 6);
+  }
+}
+
 function drawPlatform(p) {
   if (isMine()) { drawPlatformMine(p); return; }
   if (isForest()) { drawPlatformBranch(p); return; }
+  if (isNether()) { drawPlatformNether(p); return; }
   const platH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -643,6 +690,28 @@ function drawPlatformMine(p) {
   ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
 }
 
+function drawPlatformNether(p) {
+  const platH = 24;
+  ctx.fillStyle = '#5A1008';
+  ctx.fillRect(p.x, p.y, p.w, platH);
+  ctx.fillStyle = '#7A1C10';
+  ctx.fillRect(p.x, p.y, p.w, 8);
+  ctx.fillStyle = '#3A0806';
+  for (let bx = p.x; bx < p.x + p.w; bx += 16) {
+    ctx.fillRect(bx, p.y, 2, platH);
+  }
+  ctx.fillStyle = '#8A2018';
+  for (let bx = p.x; bx < p.x + p.w; bx += 16) {
+    ctx.fillRect(bx + 2, p.y + 1, 10, 2);
+  }
+  ctx.fillStyle = '#FF4400';
+  for (let bx = p.x + 8; bx < p.x + p.w; bx += 32) {
+    ctx.fillRect(bx, p.y + 6, 4, 2);
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
+}
+
 function isNight() {
   return level % 2 === 0;
 }
@@ -653,6 +722,10 @@ function isMine() {
 
 function isForest() {
   return level % 4 === 0;
+}
+
+function isNether() {
+  return level === 6;
 }
 
 function drawTorch(x, y) {
@@ -818,9 +891,40 @@ function drawForestTrees() {
   }
 }
 
+function drawBackgroundNether() {
+  ctx.fillStyle = netherGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  const stoneShades = ['#3D0C06', '#4A1008', '#320A05', '#551008'];
+  for (const s of NETHER_STONES) {
+    ctx.fillStyle = stoneShades[(s.x + s.y) % 4];
+    ctx.fillRect(s.x, s.y, s.w, s.h);
+    ctx.fillStyle = '#5A140A';
+    ctx.fillRect(s.x, s.y, s.w, 2);
+    ctx.fillRect(s.x, s.y, 2, s.h);
+  }
+
+  for (const lava of NETHER_LAVA_POOLS) {
+    const gx = lava.x + lava.w / 2, gy = lava.y + lava.h / 2;
+    const glow = ctx.createRadialGradient(gx, gy, 2, gx, gy, 80);
+    glow.addColorStop(0,   'rgba(255, 120, 0, 0.35)');
+    glow.addColorStop(0.5, 'rgba(255, 80,  0, 0.15)');
+    glow.addColorStop(1,   'rgba(255, 50,  0, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(Math.max(0, gx - 80), Math.max(0, gy - 80), 160, 160);
+    ctx.fillStyle = '#FF6600';
+    ctx.fillRect(lava.x, lava.y, lava.w, lava.h);
+    ctx.fillStyle = '#FF9900';
+    ctx.fillRect(lava.x + 2, lava.y, lava.w - 4, 3);
+    ctx.fillStyle = '#FFCC00';
+    ctx.fillRect(lava.x + 4, lava.y + 1, 6, 1);
+  }
+}
+
 function drawBackground() {
   if (isMine()) { drawBackgroundMine(); return; }
   if (isForest()) { drawBackgroundForest(); return; }
+  if (isNether()) { drawBackgroundNether(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
@@ -1236,7 +1340,7 @@ function update() {
       if (player.x + SW - 4 > capLeft && player.x + 4 < capRight) {
         levelComplete = true;
         stopBgMusic();
-        playPipeEnter();
+        if (level === 5) playPortalEnter(); else playPipeEnter();
       }
     }
   }
@@ -1275,6 +1379,42 @@ function drawPipe(x, y) {
   ctx.fillRect(capX + 6, y - PIPE_H + 2, 12, capH - 4);
 }
 
+function drawNetherPortal(x, y) {
+  const fw = PIPE_W;
+  const fh = 80;
+  const ft = 8;
+  const top = y - fh;
+
+  // Obsidian frame
+  ctx.fillStyle = '#14091E';
+  ctx.fillRect(x, top, fw, fh);
+
+  // Animated purple interior
+  const ix = x + ft;
+  const iy = top + ft;
+  const iw = fw - ft * 2;
+  const ih = fh - ft;
+  const t = portalFrame * 0.05;
+  const purples = ['#4B00A0', '#6611CC', '#7722DD', '#5500B8'];
+  for (let i = 0; i < iw; i++) {
+    const wave = (Math.sin(t + i * 0.45) + 1) * 0.5;
+    ctx.fillStyle = purples[Math.floor(wave * purples.length) % purples.length];
+    ctx.fillRect(ix + i, iy, 1, ih);
+  }
+  const glowAlpha = 0.25 + (Math.sin(t * 1.4) + 1) * 0.1;
+  ctx.globalAlpha = glowAlpha;
+  ctx.fillStyle = '#BB88FF';
+  ctx.fillRect(ix + 4, iy + 4, iw - 8, ih - 8);
+  ctx.globalAlpha = 1.0;
+
+  // Frame highlight
+  ctx.fillStyle = '#2A1248';
+  ctx.fillRect(x, top, fw, 2);
+  ctx.fillRect(x, top, 2, fh);
+  ctx.fillStyle = '#0A0514';
+  ctx.fillRect(x + fw - 2, top, 2, fh);
+}
+
 function drawLevelComplete() {
   ctx.fillStyle = 'rgba(0,0,0,0.6)';
   ctx.fillRect(0, 0, W, H);
@@ -1295,6 +1435,7 @@ function nextLevel() {
   level++;
   levelKills    = 0;
   pipeVisible   = false;
+  portalFrame   = 0;
   levelComplete = false;
   if (isMine()) regenerateOreBlocks();
   mobSpeed      = Math.min(mobSpeed * 1.15, 4.0);
@@ -1357,7 +1498,10 @@ function draw() {
   if (isForest()) drawForestTrees();
   platforms.forEach(drawPlatform);
   drawGround();
-  if (pipeVisible) drawPipe(PIPE_X, GROUND_TOP);
+  if (pipeVisible) {
+    if (level === 5) { portalFrame++; drawNetherPortal(PIPE_X, GROUND_TOP); }
+    else drawPipe(PIPE_X, GROUND_TOP);
+  }
   drawWorldItems();
   drawPhantoms();
   drawMobs();
