@@ -228,6 +228,8 @@ function resetGame() {
   spawnTimer = 0;
   spawnMob(true, false);
   spawnMob(true, true);
+  phantoms = [];
+  phantomTimer = 120;
   gameOver = false;
   paused = false;
   startBgMusic();
@@ -380,9 +382,38 @@ const ZOMBIE = [
   [5,5,5,0,0,5,5,5], // row 17 ботинки
 ];
 
+const PHANTOM_PALETTE = [
+  null,       // 0 transparent
+  '#060C1C',  // 1 near-black (wing edges)
+  '#102040',  // 2 very dark blue (outer wings)
+  '#1C3868',  // 3 dark blue (wings)
+  '#2A5490',  // 4 medium blue (body)
+  '#4878B8',  // 5 lighter blue (belly)
+  '#40E880',  // 6 green (eyes)
+  '#88B0D8',  // 7 pale blue-grey (belly highlight)
+];
+
+// Phantom: 16 wide × 8 tall (80×40 px), viewed from the side
+const PHANTOM = [
+  [0,0,0,1,2,0,0,0,0,0,0,2,1,0,0,0], // row 0 wing tips
+  [0,0,1,2,3,2,0,0,0,0,2,3,2,1,0,0], // row 1 upper wings
+  [0,1,2,3,3,3,3,3,3,3,3,3,3,2,1,0], // row 2 wing span
+  [1,2,3,3,3,4,4,4,4,4,4,3,3,3,2,1], // row 3 wing + body
+  [0,1,3,3,4,4,5,7,7,5,4,4,3,3,1,0], // row 4 body/belly
+  [0,0,2,3,4,5,6,7,7,6,5,4,3,2,0,0], // row 5 eyes + belly
+  [0,0,0,3,4,5,5,5,5,5,5,4,3,0,0,0], // row 6 lower belly
+  [0,0,0,0,2,3,3,4,4,3,3,2,0,0,0,0], // row 7 tail
+];
+
 const CELL = 5; // px per sprite cell
 const SW = 8 * CELL;  // sprite width  = 40
 const SH = 18 * CELL; // sprite height = 90
+
+const PW = 16 * CELL; // phantom width  = 80 px
+const PH = 8  * CELL; // phantom height = 40 px
+// Flies between level-1 platforms (GROUND_TOP-110) and level-2 (GROUND_TOP-220), centred at -165
+const PHANTOM_FLY_Y = GROUND_TOP - 185;
+const PHANTOM_SPEED = 1.8;
 
 // ── Моб-система ────────────────────────────────────────────
 let mobSpeed      = 1.4;
@@ -403,6 +434,8 @@ const PIPE_CAP_EXTRA = 4;   // выступ крышки с каждой сто�
 
 let bgMusicMuted = false;
 let paused = false;
+let phantoms     = [];
+let phantomTimer = 120; // phase-shifted ~½ spawnInterval from zombie spawns
 const MUTE_BTN = { x: W - 56, y: 8, w: 48, h: 32 };
 
 canvas.addEventListener('click', e => {
@@ -439,6 +472,42 @@ function spawnMob(startOnScreen = false, fromRight = null) {
 // Начальные мобы — по одному с каждой стороны экрана
 spawnMob(true, false);
 spawnMob(true, true);
+
+function spawnPhantom() {
+  const fromRight = Math.random() > 0.5;
+  phantoms.push({
+    x:   fromRight ? W + 10 : -PW - 10,
+    vx:  fromRight ? -PHANTOM_SPEED : PHANTOM_SPEED,
+    age: 0,
+  });
+}
+
+function updatePhantoms() {
+  if (!isNight()) { phantoms = []; return; }
+
+  phantomTimer++;
+  if (phantomTimer >= spawnInterval && phantoms.length < 3 && !pipeVisible) {
+    phantomTimer = 0;
+    spawnPhantom();
+  }
+
+  for (let i = phantoms.length - 1; i >= 0; i--) {
+    const ph = phantoms[i];
+    ph.x += ph.vx;
+    ph.age++;
+
+    if (ph.x < -PW - 60 || ph.x > W + 60) { phantoms.splice(i, 1); continue; }
+
+    const drawY    = PHANTOM_FLY_Y + Math.round(Math.sin(ph.age * 0.04) * 12);
+    const overlapX = player.x + 4 < ph.x + PW && player.x + SW - 4 > ph.x;
+    const overlapY = player.y - SH < drawY + PH && player.y > drawY;
+    if (overlapX && overlapY && !gameOver && !levelComplete) {
+      gameOver = true;
+      stopBgMusic();
+      playGameOver();
+    }
+  }
+}
 
 function updateMobs() {
   // Спавн новых мобов
@@ -557,6 +626,24 @@ function drawMobs() {
     drawZombie(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
     if (!mob.alive) ctx.restore();
   }
+}
+
+function drawPhantomSprite(ph) {
+  const drawY = PHANTOM_FLY_Y + Math.round(Math.sin(ph.age * 0.04) * 12);
+  const facingRight = ph.vx > 0;
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 16; col++) {
+      const color = PHANTOM_PALETTE[PHANTOM[row][col]];
+      if (!color) continue;
+      const c = facingRight ? col : (15 - col);
+      ctx.fillStyle = color;
+      ctx.fillRect(ph.x + c * CELL, drawY + row * CELL, CELL, CELL);
+    }
+  }
+}
+
+function drawPhantoms() {
+  for (const ph of phantoms) drawPhantomSprite(ph);
 }
 
 function drawGround() {
@@ -729,6 +816,7 @@ function update() {
   }
 
   updateMobs();
+  updatePhantoms();
 }
 
 function drawPipe(x, y) {
@@ -786,6 +874,8 @@ function nextLevel() {
   spawnTimer = 0;
   spawnMob(true, false);
   spawnMob(true, true);
+  phantoms = [];
+  phantomTimer = Math.floor(spawnInterval / 2);
   paused = false;
   startBgMusic();
 }
@@ -825,6 +915,7 @@ function draw() {
   platforms.forEach(drawPlatform);
   drawGround();
   if (pipeVisible) drawPipe(PIPE_X, GROUND_TOP);
+  drawPhantoms();
   drawMobs();
   drawSteve(player.x, player.y - SH, player.facingRight, input.left || input.right, player.walkFrame);
   drawHUD();
