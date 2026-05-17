@@ -266,6 +266,7 @@ function resetGame() {
   phantomTimer = 120;
   gameOver = false;
   paused = false;
+  inventoryOpen = false;
   startBgMusic();
 }
 
@@ -293,6 +294,15 @@ document.addEventListener('keydown', e => {
     }
     return;
   }
+
+  // Inventory open / close with Q
+  if (!gameOver && !levelComplete && e.code === 'KeyQ') {
+    inventoryOpen = !inventoryOpen;
+    return;
+  }
+
+  // Block game input while inventory is open
+  if (inventoryOpen) return;
 
   // Resume from pause via movement keys or space
   if (paused && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'Space')) {
@@ -483,10 +493,58 @@ let phantoms     = [];
 let phantomTimer = 120; // phase-shifted ~½ spawnInterval from zombie spawns
 const MUTE_BTN = { x: W - 56, y: 8, w: 48, h: 32 };
 
+// ── Inventory ─────────────────────────────────────────────────
+let inventoryOpen = false;
+
+const ISLOT   = 52;    // slot size (px)
+const IGAP    = 4;     // gap between slots
+const IPW     = 240;   // panel width (+20 %)
+const IPH     = 350;   // panel height (room for two-line hint below hand slot)
+const IPX     = (W - IPW) >> 1;                              // 280
+const IPY     = (H - IPH) >> 1;                              // 72
+const IGRID_X = IPX + (IPW - (3 * (ISLOT + IGAP) - IGAP)) / 2 | 0; // centred
+const IGRID_Y = IPY + 34;                                    // 106
+const IHAND_X = IGRID_X;
+const IHAND_Y = IGRID_Y + 3 * (ISLOT + IGAP) - IGAP + 36;  // 306
+
+// 9 inventory slots (3×3), item ids or null
+let inventory = ['sword', 'pickaxe', 'apple', null, null, null, null, null, null];
+let handSlot  = null;
+
 canvas.addEventListener('click', e => {
   const r  = canvas.getBoundingClientRect();
   const cx = (e.clientX - r.left) * (W / r.width);
   const cy = (e.clientY - r.top)  * (H / r.height);
+
+  // Inventory slot interactions (when inventory is open)
+  if (inventoryOpen) {
+    if (cx >= IPX && cx < IPX + IPW && cy >= IPY && cy < IPY + IPH) {
+      // Check 3×3 grid slots — swap clicked slot with hand slot
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+          const sx = IGRID_X + col * (ISLOT + IGAP);
+          const sy = IGRID_Y + row * (ISLOT + IGAP);
+          if (cx >= sx && cx < sx + ISLOT && cy >= sy && cy < sy + ISLOT) {
+            const idx = row * 3 + col;
+            const tmp = inventory[idx]; inventory[idx] = handSlot; handSlot = tmp;
+            return;
+          }
+        }
+      }
+      // Hand slot — return item to first empty inventory slot
+      if (cx >= IHAND_X && cx < IHAND_X + ISLOT && cy >= IHAND_Y && cy < IHAND_Y + ISLOT) {
+        if (handSlot !== null) {
+          const emptyIdx = inventory.indexOf(null);
+          if (emptyIdx >= 0) { inventory[emptyIdx] = handSlot; handSlot = null; }
+        }
+      }
+    } else {
+      inventoryOpen = false; // click outside panel → close
+    }
+    return;
+  }
+
+  // Mute button
   if (cx >= MUTE_BTN.x && cx <= MUTE_BTN.x + MUTE_BTN.w &&
       cy >= MUTE_BTN.y && cy <= MUTE_BTN.y + MUTE_BTN.h) {
     bgMusicMuted = !bgMusicMuted;
@@ -891,6 +949,170 @@ function drawHUD() {
   ctx.textAlign = 'left';
 }
 
+function drawItemIcon(id, x, y) {
+  switch (id) {
+    case 'sword': {
+      // Blade
+      ctx.fillStyle = '#C8C8C8';
+      ctx.fillRect(x + 23, y +  5, 6, 26);
+      ctx.fillStyle = '#909090';
+      ctx.fillRect(x + 27, y +  5, 2, 26);
+      // Tip
+      ctx.fillStyle = '#DCDCDC';
+      ctx.fillRect(x + 24, y +  3, 4,  4);
+      ctx.fillRect(x + 25, y +  2, 2,  3);
+      // Guard
+      ctx.fillStyle = '#9A6A1A';
+      ctx.fillRect(x + 11, y + 31, 30,  5);
+      ctx.fillStyle = '#C08820';
+      ctx.fillRect(x + 13, y + 31, 26,  2);
+      // Handle
+      ctx.fillStyle = '#6B4812';
+      ctx.fillRect(x + 23, y + 36, 6, 10);
+      // Pommel
+      ctx.fillStyle = '#9A6A1A';
+      ctx.fillRect(x + 21, y + 46, 10,  4);
+      break;
+    }
+    case 'pickaxe': {
+      // Head
+      ctx.fillStyle = '#888888';
+      ctx.fillRect(x +  4, y +  7, 44, 12);
+      ctx.fillStyle = '#AAAAAA';
+      ctx.fillRect(x +  6, y +  7, 40,  4);
+      // Left spike
+      ctx.fillStyle = '#686868';
+      ctx.fillRect(x +  4, y +  7,  8, 16);
+      ctx.fillRect(x +  4, y + 19,  6,  4);
+      // Right spike
+      ctx.fillRect(x + 40, y +  7,  8, 14);
+      ctx.fillRect(x + 42, y + 17,  6,  4);
+      // Handle
+      ctx.fillStyle = '#8B6418';
+      ctx.fillRect(x + 22, y + 17,  8, 30);
+      ctx.fillStyle = '#B07E20';
+      ctx.fillRect(x + 22, y + 17,  4, 30);
+      break;
+    }
+    case 'apple': {
+      // Stem
+      ctx.fillStyle = '#3A2010';
+      ctx.fillRect(x + 24, y +  4,  4,  7);
+      // Leaf
+      ctx.fillStyle = '#1A881A';
+      ctx.fillRect(x + 27, y +  4, 10,  6);
+      ctx.fillStyle = '#22AA22';
+      ctx.fillRect(x + 28, y +  5,  7,  3);
+      // Body
+      ctx.fillStyle = '#CC1818';
+      ctx.fillRect(x +  9, y + 10, 34,  4);
+      ctx.fillRect(x +  5, y + 14, 42, 18);
+      ctx.fillRect(x +  9, y + 32, 34,  4);
+      // Highlight
+      ctx.fillStyle = '#FF4848';
+      ctx.fillRect(x +  9, y + 13, 12,  8);
+      // Bottom indent
+      ctx.fillStyle = '#AA1010';
+      ctx.fillRect(x + 18, y + 34, 16,  2);
+      break;
+    }
+    case 'diamond': {
+      ctx.fillStyle = '#18B8B8';
+      ctx.fillRect(x + 20, y +  4,  12,  4);
+      ctx.fillRect(x + 16, y +  8,  20,  4);
+      ctx.fillRect(x + 10, y + 12,  32,  4);
+      ctx.fillRect(x +  6, y + 16,  40,  4);
+      ctx.fillRect(x + 10, y + 20,  32,  4);
+      ctx.fillRect(x + 16, y + 24,  20,  4);
+      ctx.fillRect(x + 20, y + 28,  12,  4);
+      ctx.fillRect(x + 22, y + 32,   8,  4);
+      ctx.fillRect(x + 24, y + 36,   4,  6);
+      // Highlight
+      ctx.fillStyle = '#6CDDDD';
+      ctx.fillRect(x + 12, y + 12, 12,  6);
+      ctx.fillStyle = '#38C8C8';
+      ctx.fillRect(x + 24, y + 12,  8,  4);
+      break;
+    }
+  }
+}
+
+function drawSlot(sx, sy, item) {
+  // Raised outer bevel
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(sx, sy, ISLOT, 2);
+  ctx.fillRect(sx, sy, 2, ISLOT);
+  ctx.fillStyle = '#555555';
+  ctx.fillRect(sx,           sy + ISLOT - 2, ISLOT, 2);
+  ctx.fillRect(sx + ISLOT - 2, sy,           2, ISLOT);
+  // Inset inner shadow
+  ctx.fillStyle = '#373737';
+  ctx.fillRect(sx + 2, sy + 2, ISLOT - 4, 2);
+  ctx.fillRect(sx + 2, sy + 2, 2, ISLOT - 4);
+  ctx.fillStyle = '#8B8B8B';
+  ctx.fillRect(sx + 2, sy + ISLOT - 4, ISLOT - 4, 2);
+  ctx.fillRect(sx + ISLOT - 4, sy + 2,  2, ISLOT - 4);
+  // Dark slot background
+  ctx.fillStyle = '#595959';
+  ctx.fillRect(sx + 4, sy + 4, ISLOT - 8, ISLOT - 8);
+  if (item) drawItemIcon(item, sx, sy);
+}
+
+function drawInventory() {
+  // Semi-transparent overlay
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(0, 0, W, H);
+
+  // Panel background
+  ctx.fillStyle = '#C6C6C6';
+  ctx.fillRect(IPX, IPY, IPW, IPH);
+  // Panel bevel
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(IPX, IPY, IPW, 2);
+  ctx.fillRect(IPX, IPY, 2, IPH);
+  ctx.fillStyle = '#555555';
+  ctx.fillRect(IPX,         IPY + IPH - 2, IPW, 2);
+  ctx.fillRect(IPX + IPW - 2, IPY,         2, IPH);
+
+  // Title
+  ctx.fillStyle = '#3F3F3F';
+  ctx.font = 'bold 15px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Inventory', IPX + IPW / 2, IPY + 24);
+  ctx.textAlign = 'left';
+
+  // 3×3 grid
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      const sx = IGRID_X + col * (ISLOT + IGAP);
+      const sy = IGRID_Y + row * (ISLOT + IGAP);
+      drawSlot(sx, sy, inventory[row * 3 + col]);
+    }
+  }
+
+  // Separator
+  const sepY = IHAND_Y - 18;
+  ctx.fillStyle = '#555555';
+  ctx.fillRect(IPX + 8, sepY,     IPW - 16, 1);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(IPX + 8, sepY + 1, IPW - 16, 1);
+
+  // Hand slot label + slot
+  ctx.fillStyle = '#3F3F3F';
+  ctx.font = '13px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('Hand:', IHAND_X, IHAND_Y - 3);
+  drawSlot(IHAND_X, IHAND_Y, handSlot);
+
+  // Close hint
+  ctx.fillStyle = '#6A6A6A';
+  ctx.font = '12px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Q — закрыть', IPX + IPW / 2, IPY + IPH - 35);
+  ctx.fillText('клик по слоту — экипировать', IPX + IPW / 2, IPY + IPH - 22);
+  ctx.textAlign = 'left';
+}
+
 function update() {
   pollGamepad();
 
@@ -1071,13 +1293,14 @@ function draw() {
   drawMobs();
   drawSteve(player.x, player.y - SH, player.facingRight, input.left || input.right, player.walkFrame);
   drawHUD();
-  if (levelComplete) drawLevelComplete();
-  if (gameOver)      drawGameOver();
-  if (paused)        drawPaused();
+  if (levelComplete)  drawLevelComplete();
+  if (gameOver)       drawGameOver();
+  if (paused)         drawPaused();
+  if (inventoryOpen)  drawInventory();
 }
 
 function loop() {
-  if (!gameOver && !paused) update();
+  if (!gameOver && !paused && !inventoryOpen) update();
   draw();
   requestAnimationFrame(loop);
 }
