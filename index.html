@@ -229,14 +229,30 @@ function resetGame() {
   spawnMob(true, false);
   spawnMob(true, true);
   gameOver = false;
+  paused = false;
   startBgMusic();
 }
 
 document.addEventListener('keydown', e => {
-  if (!bgMusicActive && !gameOver && !levelComplete) startBgMusic();
+  if (!bgMusicActive && !gameOver && !levelComplete && !paused) startBgMusic();
   if (levelComplete && (e.key === ' ' || e.key === 'Enter')) { nextLevel(); return; }
   if (gameOver && (e.key === ' ' || e.key === 'Enter')) { resetGame(); return; }
   if (!gameOver && e.key === 'n') { nextLevel(); return; }
+
+  // Pause / unpause with P
+  if (!gameOver && !levelComplete && (e.key === 'p' || e.key === 'P')) {
+    paused = !paused;
+    if (paused) stopBgMusic();
+    else startBgMusic();
+    return;
+  }
+
+  // Resume from pause via movement keys or space
+  if (paused && (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === ' ')) {
+    paused = false;
+    startBgMusic();
+  }
+
   if (e.key === 'ArrowLeft')  keyInput.left  = true;
   if (e.key === 'ArrowRight') keyInput.right = true;
   if (e.key === ' ')          keyInput.jump  = true;
@@ -386,6 +402,7 @@ const PIPE_H         = 60;  // высота от земли
 const PIPE_CAP_EXTRA = 4;   // выступ крышки с каждой стороны
 
 let bgMusicMuted = false;
+let paused = false;
 const MUTE_BTN = { x: W - 56, y: 8, w: 48, h: 32 };
 
 canvas.addEventListener('click', e => {
@@ -769,7 +786,21 @@ function nextLevel() {
   spawnTimer = 0;
   spawnMob(true, false);
   spawnMob(true, true);
+  paused = false;
   startBgMusic();
+}
+
+function drawPaused() {
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 56px monospace';
+  ctx.fillText('PAUSE', W / 2, H / 2 - 20);
+  ctx.fillStyle = '#AAAAFF';
+  ctx.font = '18px monospace';
+  ctx.fillText('P / ← → Space — resume', W / 2, H / 2 + 24);
+  ctx.textAlign = 'left';
 }
 
 function drawGameOver() {
@@ -799,10 +830,11 @@ function draw() {
   drawHUD();
   if (levelComplete) drawLevelComplete();
   if (gameOver)      drawGameOver();
+  if (paused)        drawPaused();
 }
 
 function loop() {
-  if (!gameOver) update();
+  if (!gameOver && !paused) update();
   draw();
   requestAnimationFrame(loop);
 }
