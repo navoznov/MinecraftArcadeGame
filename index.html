@@ -498,13 +498,13 @@ let inventoryOpen = false;
 
 const ISLOT   = 52;    // slot size (px)
 const IGAP    = 4;     // gap between slots
-const IPW     = 200;   // panel width
-const IPH     = 306;   // panel height
-const IPX     = (W - IPW) >> 1;                              // 300
+const IPW     = 240;   // panel width (+20 %)
+const IPH     = 350;   // panel height (room for two-line hint below hand slot)
+const IPX     = (W - IPW) >> 1;                              // 280
 const IPY     = (H - IPH) >> 1;                              // 72
-const IGRID_X = IPX + 18;                                    // 318
+const IGRID_X = IPX + (IPW - (3 * (ISLOT + IGAP) - IGAP)) / 2 | 0; // centred
 const IGRID_Y = IPY + 34;                                    // 106
-const IHAND_X = IPX + 18;
+const IHAND_X = IGRID_X;
 const IHAND_Y = IGRID_Y + 3 * (ISLOT + IGAP) - IGAP + 36;  // 306
 
 // 9 inventory slots (3×3), item ids or null
@@ -1077,8 +1077,9 @@ function drawInventory() {
   // Title
   ctx.fillStyle = '#3F3F3F';
   ctx.font = 'bold 15px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Inventory', IPX + IPW / 2, IPY + 24);
   ctx.textAlign = 'left';
-  ctx.fillText('Inventory', IPX + 10, IPY + 24);
 
   // 3×3 grid
   for (let row = 0; row < 3; row++) {
@@ -1100,14 +1101,15 @@ function drawInventory() {
   ctx.fillStyle = '#3F3F3F';
   ctx.font = '13px monospace';
   ctx.textAlign = 'left';
-  ctx.fillText('Hand:', IPX + 10, IHAND_Y - 3);
+  ctx.fillText('Hand:', IHAND_X, IHAND_Y - 3);
   drawSlot(IHAND_X, IHAND_Y, handSlot);
 
   // Close hint
   ctx.fillStyle = '#6A6A6A';
   ctx.font = '12px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('Q — close  •  click slot to equip', IPX + IPW / 2, IPY + IPH - 8);
+  ctx.fillText('Q — закрыть', IPX + IPW / 2, IPY + IPH - 35);
+  ctx.fillText('клик по слоту — экипировать', IPX + IPW / 2, IPY + IPH - 22);
   ctx.textAlign = 'left';
 }
 
