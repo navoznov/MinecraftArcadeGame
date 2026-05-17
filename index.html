@@ -240,7 +240,7 @@ document.addEventListener('keydown', e => {
   if (!gameOver && e.key === 'n') { nextLevel(); return; }
 
   // Pause / unpause with P
-  if (!gameOver && !levelComplete && (e.key === 'p' || e.key === 'P')) {
+  if (!gameOver && !levelComplete && e.code === 'KeyP') {
     paused = !paused;
     if (paused) stopBgMusic();
     else startBgMusic();
