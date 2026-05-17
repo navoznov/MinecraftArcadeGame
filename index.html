@@ -235,9 +235,9 @@ function resetGame() {
 
 document.addEventListener('keydown', e => {
   if (!bgMusicActive && !gameOver && !levelComplete && !paused) startBgMusic();
-  if (levelComplete && (e.key === ' ' || e.key === 'Enter')) { nextLevel(); return; }
-  if (gameOver && (e.key === ' ' || e.key === 'Enter')) { resetGame(); return; }
-  if (!gameOver && e.key === 'n') { nextLevel(); return; }
+  if (levelComplete && (e.code === 'Space' || e.code === 'Enter')) { nextLevel(); return; }
+  if (gameOver && (e.code === 'Space' || e.code === 'Enter')) { resetGame(); return; }
+  if (!gameOver && e.code === 'KeyN') { nextLevel(); return; }
 
   // Pause / unpause with P
   if (!gameOver && !levelComplete && e.code === 'KeyP') {
@@ -248,20 +248,20 @@ document.addEventListener('keydown', e => {
   }
 
   // Resume from pause via movement keys or space
-  if (paused && (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === ' ')) {
+  if (paused && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'Space')) {
     paused = false;
     startBgMusic();
   }
 
-  if (e.key === 'ArrowLeft')  keyInput.left  = true;
-  if (e.key === 'ArrowRight') keyInput.right = true;
-  if (e.key === ' ')          keyInput.jump  = true;
-  if (e.key === ' ')          e.preventDefault();
+  if (e.code === 'ArrowLeft')  keyInput.left  = true;
+  if (e.code === 'ArrowRight') keyInput.right = true;
+  if (e.code === 'Space')      keyInput.jump  = true;
+  if (e.code === 'Space')      e.preventDefault();
 });
 document.addEventListener('keyup', e => {
-  if (e.key === 'ArrowLeft')  keyInput.left  = false;
-  if (e.key === 'ArrowRight') keyInput.right = false;
-  if (e.key === ' ')          keyInput.jump  = false;
+  if (e.code === 'ArrowLeft')  keyInput.left  = false;
+  if (e.code === 'ArrowRight') keyInput.right = false;
+  if (e.code === 'Space')      keyInput.jump  = false;
 });
 
 // Xbox Standard Mapping:
