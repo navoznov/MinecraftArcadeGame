@@ -169,6 +169,40 @@ function playGameOver() {
   }
 }
 
+function playSwordSwing() {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const osc  = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(520, now);
+  osc.frequency.exponentialRampToValueAtTime(90, now + 0.12);
+  gain.gain.setValueAtTime(0.20, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+  osc.start(now);
+  osc.stop(now + 0.12);
+}
+
+function playEatApple() {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const notes = [[523, 0], [659, 0.10], [784, 0.20], [1047, 0.30]];
+  for (const [freq, t] of notes) {
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const at = audioCtx.currentTime + t;
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.12, at);
+    gain.gain.exponentialRampToValueAtTime(0.001, at + 0.20);
+    osc.start(at);
+    osc.stop(at + 0.20);
+  }
+}
+
 // [freq Hz (0=rest), duration s]  — Super Mario Bros. Ground Theme, 200 BPM
 const MARIO_MELODY = [
   // Intro
@@ -269,6 +303,9 @@ function resetGame() {
   inventoryOpen = false;
   inventory = ['apple', null, null, null, null, null, null, null, null];
   handSlot = null;
+  joyRays = [];
+  swordSwing = { active: false, timer: 0 };
+  useCooldown = 0;
   initWorldItems();
   startBgMusic();
 }
@@ -317,6 +354,7 @@ document.addEventListener('keydown', e => {
   if (e.code === 'ArrowRight') keyInput.right = true;
   if (e.code === 'Space')      keyInput.jump  = true;
   if (e.code === 'Space')      e.preventDefault();
+  if (e.code === 'KeyE' && !gameOver && !levelComplete && !inventoryOpen && !paused) useItem();
 });
 document.addEventListener('keyup', e => {
   if (e.code === 'ArrowLeft')  keyInput.left  = false;
@@ -496,6 +534,10 @@ let phantoms     = [];
 let phantomTimer = 120; // phase-shifted ~½ spawnInterval from zombie spawns
 const MUTE_BTN = { x: W - 56, y: 8, w: 48, h: 32 };
 
+let useCooldown = 0;
+let swordSwing  = { active: false, timer: 0 };
+let joyRays     = [];
+
 // ── Inventory ─────────────────────────────────────────────────
 let inventoryOpen = false;
 
@@ -570,6 +612,51 @@ canvas.addEventListener('click', e => {
     }
   }
 });
+
+function useItem() {
+  if (!handSlot || useCooldown > 0) return;
+  if (handSlot === 'sword') {
+    activateSword();
+    useCooldown = 18;
+  } else if (handSlot === 'apple') {
+    eatApple();
+  }
+  // pickaxe does nothing
+}
+
+function activateSword() {
+  swordSwing = { active: true, timer: 12, facingRight: player.facingRight };
+  playSwordSwing();
+  const range  = 80;
+  const plCX   = player.x + SW / 2;
+  const plCY   = player.y - SH / 2;
+  for (const mob of mobs) {
+    if (!mob.alive) continue;
+    const mCX    = mob.x + SW / 2;
+    const mCY    = mob.y - SH / 2;
+    const dx     = mCX - plCX;
+    const inFront = player.facingRight ? dx > -10 && dx < range : dx < 10 && dx > -range;
+    if (inFront && Math.abs(mCY - plCY) < SH * 0.75) {
+      mob.alive = false;
+      mob.dyingTimer = 20;
+      score++;
+      levelKills++;
+      if (levelKills >= 5) pipeVisible = true;
+      playSquish();
+    }
+  }
+}
+
+function eatApple() {
+  handSlot = null;
+  const COLORS = ['#FFD700', '#FF6B6B', '#4ECDC4', '#98D8C8', '#FF8C00', '#7FFF00', '#FF69B4', '#00BFFF'];
+  joyRays = [];
+  for (let i = 0; i < 10; i++) {
+    const angle = (i / 10) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+    joyRays.push({ angle, color: COLORS[i % COLORS.length], timer: 120, maxTimer: 120, maxLen: 45 + Math.random() * 25 });
+  }
+  playEatApple();
+}
 
 function spawnMob(startOnScreen = false, fromRight = null) {
   if (fromRight === null) fromRight = Math.random() > 0.5;
@@ -947,6 +1034,46 @@ function drawCloud(cx, cy) {
   ctx.fillRect(cx + 16, cy - 8,  16, 16);
 }
 
+function drawSwordSwing() {
+  if (!swordSwing.active) return;
+  const alpha = swordSwing.timer / 12;
+  const dir   = swordSwing.facingRight ? 1 : -1;
+  const baseX = player.x + (swordSwing.facingRight ? SW : 0);
+  const baseY = player.y - SH * 0.88;
+  ctx.save();
+  for (let i = 0; i < 7; i++) {
+    const t  = i / 6;
+    const sx = baseX + dir * t * 64;
+    const sy = baseY + t * SH * 0.65;
+    const sz = Math.round(8 - t * 5);   // taper 8→3 px
+    ctx.globalAlpha = alpha * (1 - t * 0.35);
+    ctx.fillStyle = t < 0.3 ? '#FFFFFF' : t < 0.6 ? '#FFFF88' : '#FFD700';
+    ctx.fillRect(sx - sz / 2, sy - sz / 2, sz, sz);
+  }
+  ctx.restore();
+}
+
+function drawJoyRays() {
+  if (!joyRays.length) return;
+  const cx = player.x + SW / 2;
+  const cy = player.y - SH / 2;
+  ctx.save();
+  for (const r of joyRays) {
+    const progress = 1 - r.timer / r.maxTimer;
+    const dist  = 18 + Math.min(progress * 2.5, 1) * r.maxLen;
+    ctx.globalAlpha = r.timer / r.maxTimer;
+    ctx.fillStyle = r.color;
+    const rx = cx + Math.cos(r.angle) * dist;
+    const ry = cy + Math.sin(r.angle) * dist;
+    ctx.fillRect(rx - 3, ry - 3, 6, 6);
+    ctx.globalAlpha = (r.timer / r.maxTimer) * 0.5;
+    const rx2 = cx + Math.cos(r.angle) * (dist + 9);
+    const ry2 = cy + Math.sin(r.angle) * (dist + 9);
+    ctx.fillRect(rx2 - 2, ry2 - 2, 4, 4);
+  }
+  ctx.restore();
+}
+
 function drawHUD() {
   // Score / level
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -954,6 +1081,15 @@ function drawHUD() {
   ctx.fillStyle = '#FFD700';
   ctx.font = 'bold 18px monospace';
   ctx.fillText(`Score: ${score}   Lv.${level}`, 18, 30);
+
+  // Hand slot indicator
+  if (handSlot) {
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(8, 44, 172, 20);
+    ctx.fillStyle = '#AAFFAA';
+    ctx.font = '12px monospace';
+    ctx.fillText(`Hand: ${handSlot}  [E] use`, 14, 59);
+  }
 
   // Mute button
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -1232,6 +1368,12 @@ function update() {
 
   updateMobs();
   updatePhantoms();
+
+  if (useCooldown > 0) useCooldown--;
+  if (swordSwing.active && --swordSwing.timer <= 0) swordSwing.active = false;
+  for (let i = joyRays.length - 1; i >= 0; i--) {
+    if (--joyRays[i].timer <= 0) joyRays.splice(i, 1);
+  }
 }
 
 function drawPipe(x, y) {
@@ -1292,6 +1434,9 @@ function nextLevel() {
   phantoms = [];
   phantomTimer = Math.floor(spawnInterval / 2);
   paused = false;
+  joyRays = [];
+  swordSwing = { active: false, timer: 0 };
+  useCooldown = 0;
   initWorldItems();
   startBgMusic();
 }
@@ -1335,6 +1480,8 @@ function draw() {
   drawPhantoms();
   drawMobs();
   drawSteve(player.x, player.y - SH, player.facingRight, input.left || input.right, player.walkFrame);
+  drawJoyRays();
+  drawSwordSwing();
   drawHUD();
   if (levelComplete)  drawLevelComplete();
   if (gameOver)       drawGameOver();
