@@ -2,18 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Workflow
+
+Each feature must be developed in a separate branch. After pushing, create a pull request into `main`.
+
+```
+git checkout -b feature/my-feature
+# ... make changes, commit ...
+git push -u origin feature/my-feature
+gh pr create --base main
+```
+
 ## Running the Game
 
 No build step. Open `index.html` directly in a browser:
 
 ```
 open index.html
-```
-
-Or serve it locally to avoid any browser file-restrictions:
-
-```
-python3 -m http.server 8080
 ```
 
 ## Architecture
