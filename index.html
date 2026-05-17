@@ -83,6 +83,24 @@ for (let i = 0; i < 18; i++) {
   });
 }
 
+// Deterministic iron ore blocks embedded in cave walls
+const IRON_ORE_BLOCKS = [];
+for (let i = 0; i < 12; i++) {
+  IRON_ORE_BLOCKS.push({
+    x: (i * 271 + 53) % (W - 32) + 8,
+    y: (i * 181 + 43) % (GROUND_TOP - 48) + 16,
+  });
+}
+
+// Deterministic diamond ore blocks (rarer, fewer)
+const DIAMOND_ORE_BLOCKS = [];
+for (let i = 0; i < 6; i++) {
+  DIAMOND_ORE_BLOCKS.push({
+    x: (i * 373 + 119) % (W - 32) + 8,
+    y: (i * 241 + 97) % (GROUND_TOP - 48) + 16,
+  });
+}
+
 // Torch positions (placed on cave walls / near platforms)
 const MINE_TORCHES = [
   { x: 24,      y: GROUND_TOP - 150 },
@@ -970,6 +988,47 @@ function drawBackgroundMine() {
     ctx.fillRect(ore.x + 6, ore.y + 6, 8,  6);
     ctx.fillStyle = '#1A1A1E';
     ctx.fillRect(ore.x + 2, ore.y + 2, 4, 4);
+  }
+
+  // Iron ore blocks
+  for (const ore of IRON_ORE_BLOCKS) {
+    // Stone base
+    ctx.fillStyle = '#545050';
+    ctx.fillRect(ore.x, ore.y, 20, 20);
+    // Highlight edge
+    ctx.fillStyle = '#686460';
+    ctx.fillRect(ore.x, ore.y, 20, 2);
+    ctx.fillRect(ore.x, ore.y, 2, 20);
+    // Iron ore specks (tan-orange like Minecraft)
+    ctx.fillStyle = '#C8A868';
+    ctx.fillRect(ore.x + 3,  ore.y + 3,  4, 4);
+    ctx.fillRect(ore.x + 11, ore.y + 5,  5, 3);
+    ctx.fillRect(ore.x + 4,  ore.y + 12, 3, 5);
+    ctx.fillRect(ore.x + 12, ore.y + 12, 4, 4);
+    ctx.fillStyle = '#D8B878';
+    ctx.fillRect(ore.x + 4,  ore.y + 4,  2, 2);
+    ctx.fillRect(ore.x + 13, ore.y + 13, 2, 2);
+  }
+
+  // Diamond ore blocks
+  for (const ore of DIAMOND_ORE_BLOCKS) {
+    // Stone base
+    ctx.fillStyle = '#4C5058';
+    ctx.fillRect(ore.x, ore.y, 20, 20);
+    // Highlight edge
+    ctx.fillStyle = '#606470';
+    ctx.fillRect(ore.x, ore.y, 20, 2);
+    ctx.fillRect(ore.x, ore.y, 2, 20);
+    // Diamond specks (cyan-blue like Minecraft)
+    ctx.fillStyle = '#48D8F0';
+    ctx.fillRect(ore.x + 4,  ore.y + 4,  4, 3);
+    ctx.fillRect(ore.x + 12, ore.y + 3,  4, 4);
+    ctx.fillRect(ore.x + 3,  ore.y + 13, 5, 3);
+    ctx.fillRect(ore.x + 13, ore.y + 12, 4, 5);
+    ctx.fillStyle = '#88F0FF';
+    ctx.fillRect(ore.x + 5,  ore.y + 5,  2, 1);
+    ctx.fillRect(ore.x + 13, ore.y + 4,  2, 1);
+    ctx.fillRect(ore.x + 14, ore.y + 13, 2, 1);
   }
 
   // Torch warm glow (ambient lighting)
