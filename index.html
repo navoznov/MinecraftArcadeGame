@@ -409,16 +409,13 @@ const platforms = [
 
 // Generate ore blocks with minimum spacing and no overlap with platforms.
 // allBlocks is shared between iron and diamond so they don't overlap each other.
-function genOreBlocks(count, seed0, allBlocks) {
+function genOreBlocks(count, allBlocks) {
   const PLAT_H = 24, PAD = 16;
-  let seed = seed0;
   const result = [];
   let attempts = 0;
   while (result.length < count && attempts < 2000) {
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    const x = seed % (W - 32) + 8;
-    seed = (seed * 1664525 + 1013904223) >>> 0;
-    const y = seed % (GROUND_TOP - 48) + 16;
+    const x = Math.floor(Math.random() * (W - 32)) + 8;
+    const y = Math.floor(Math.random() * (GROUND_TOP - 48)) + 16;
     const tooCloseToOre = allBlocks.some(b => Math.hypot(b.x - x, b.y - y) < 40);
     const onPlatform = platforms.some(p =>
       x + 20 > p.x - PAD && x < p.x + p.w + PAD &&
@@ -434,8 +431,8 @@ function genOreBlocks(count, seed0, allBlocks) {
   return result;
 }
 const _allOreBlocks      = [];
-const IRON_ORE_BLOCKS    = genOreBlocks(6, 12345, _allOreBlocks);
-const DIAMOND_ORE_BLOCKS = genOreBlocks(3, 67890, _allOreBlocks);
+const IRON_ORE_BLOCKS    = genOreBlocks(6, _allOreBlocks);
+const DIAMOND_ORE_BLOCKS = genOreBlocks(3, _allOreBlocks);
 
 // Steve pixel art: 8 wide × 18 tall, drawn at 5px per cell = 40×90
 const PALETTE = [
