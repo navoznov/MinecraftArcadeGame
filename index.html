@@ -249,6 +249,17 @@ document.addEventListener('keydown', e => {
     return;
   }
 
+  // Mute / unmute with M
+  if (e.code === 'KeyM') {
+    bgMusicMuted = !bgMusicMuted;
+    if (bgMusicMuted) {
+      stopBgMusic();
+    } else if (!gameOver && !levelComplete && !paused) {
+      startBgMusic();
+    }
+    return;
+  }
+
   // Resume from pause via movement keys or space
   if (paused && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'Space')) {
     paused = false;
