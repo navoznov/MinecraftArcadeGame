@@ -112,6 +112,7 @@ const MUTE_BTN = { x: W - 56, y: 8, w: 48, h: 32 };
 let useCooldown = 0;
 let swordSwing  = { active: false, timer: 0 };
 let joyRays     = [];
+let miningAnim  = { active: false, timer: 0, maxTimer: 20, ore: null, oreArr: null, oreIdx: -1, oreType: '' };
 
 // ── Inventory ─────────────────────────────────────────────────
 let inventoryOpen = false;
@@ -225,6 +226,7 @@ function resetGame() {
   joyRays = [];
   swordSwing = { active: false, timer: 0 };
   useCooldown = 0;
+  miningAnim = { active: false, timer: 0, maxTimer: 20, ore: null, oreArr: null, oreIdx: -1, oreType: '' };
   initWorldItems();
   startBgMusic();
 }
@@ -347,6 +349,8 @@ function useItem() {
   if (handSlot === 'sword') {
     activateSword();
     useCooldown = 18;
+  } else if (handSlot === 'pickaxe') {
+    if (!miningAnim.active) { mineOre(); useCooldown = 25; }
   } else if (handSlot === 'apple') {
     eatApple();
   }
@@ -384,6 +388,30 @@ function eatApple() {
     joyRays.push({ angle, color: COLORS[i % COLORS.length], timer: 120, maxTimer: 120, maxLen: 45 + Math.random() * 25 });
   }
   playEatApple();
+}
+
+const MINE_REACH = 80;
+
+function mineOre() {
+  if (!isMine()) return;
+  const px = player.x + SW / 2;
+  const py = player.y - SH / 2;
+  for (let i = 0; i < IRON_ORE_BLOCKS.length; i++) {
+    const ore = IRON_ORE_BLOCKS[i];
+    if (Math.hypot(ore.x + 10 - px, ore.y + 10 - py) < MINE_REACH) {
+      miningAnim = { active: true, timer: 20, maxTimer: 20, ore, oreArr: IRON_ORE_BLOCKS, oreIdx: i, oreType: 'iron' };
+      playPickaxeHit();
+      return;
+    }
+  }
+  for (let i = 0; i < DIAMOND_ORE_BLOCKS.length; i++) {
+    const ore = DIAMOND_ORE_BLOCKS[i];
+    if (Math.hypot(ore.x + 10 - px, ore.y + 10 - py) < MINE_REACH) {
+      miningAnim = { active: true, timer: 20, maxTimer: 20, ore, oreArr: DIAMOND_ORE_BLOCKS, oreIdx: i, oreType: 'diamond' };
+      playPickaxeHit();
+      return;
+    }
+  }
 }
 
 function spawnMob(startOnScreen = false, fromRight = null) {
@@ -950,6 +978,18 @@ function drawItemIcon(id, x, y) {
       ctx.fillRect(x + 18, y + 34, 16,  2);
       break;
     }
+    case 'iron': {
+      ctx.fillStyle = '#B0A090';
+      ctx.fillRect(x + 10, y +  8, 32,  6);
+      ctx.fillRect(x +  8, y + 14, 36, 22);
+      ctx.fillRect(x + 10, y + 36, 32,  6);
+      ctx.fillStyle = '#D0C0B0';
+      ctx.fillRect(x + 12, y + 10, 24,  2);
+      ctx.fillRect(x + 12, y + 16, 10,  4);
+      ctx.fillStyle = '#807060';
+      ctx.fillRect(x +  8, y + 36, 36,  2);
+      break;
+    }
     case 'diamond': {
       ctx.fillStyle = '#18B8B8';
       ctx.fillRect(x + 20, y +  4,  12,  4);
@@ -967,6 +1007,81 @@ function drawItemIcon(id, x, y) {
       ctx.fillRect(x + 24, y + 12,  8,  4);
       break;
     }
+  }
+}
+
+function drawMiningFx() {
+  if (!isMine()) return;
+
+  // Highlight nearest reachable ore when pickaxe is equipped
+  if (handSlot === 'pickaxe' && !miningAnim.active) {
+    const px = player.x + SW / 2;
+    const py = player.y - SH / 2;
+    let nearest = null, nearestDist = Infinity;
+    for (const ore of IRON_ORE_BLOCKS) {
+      const d = Math.hypot(ore.x + 10 - px, ore.y + 10 - py);
+      if (d < MINE_REACH && d < nearestDist) { nearest = ore; nearestDist = d; }
+    }
+    for (const ore of DIAMOND_ORE_BLOCKS) {
+      const d = Math.hypot(ore.x + 10 - px, ore.y + 10 - py);
+      if (d < MINE_REACH && d < nearestDist) { nearest = ore; nearestDist = d; }
+    }
+    if (nearest) {
+      const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 120);
+      ctx.save();
+      ctx.globalAlpha = pulse;
+      ctx.strokeStyle = '#FFFF00';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(nearest.x - 2, nearest.y - 2, 24, 24);
+      ctx.restore();
+    }
+  }
+
+  if (!miningAnim.active || !miningAnim.ore) return;
+  const progress = 1 - miningAnim.timer / miningAnim.maxTimer;
+  const ore = miningAnim.ore;
+  const oreX = ore.x + 10;
+  const oreY = ore.y + 10;
+
+  // White flash on ore block during mining
+  ctx.save();
+  ctx.globalAlpha = Math.sin(progress * Math.PI) * 0.55;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(ore.x, ore.y, 20, 20);
+  ctx.restore();
+
+  // Pickaxe swings in an arc from player's hand toward the ore
+  const handX = player.x + (player.facingRight ? SW + 2 : -2);
+  const handY = player.y - SH * 0.68;
+  const t = progress;
+  const pickX = handX + (oreX - handX) * t;
+  const pickY = handY + (oreY - handY) * t - Math.sin(t * Math.PI) * 40;
+  const angle = Math.atan2(oreY - handY, oreX - handX) + (Math.PI / 3) * (1 - t * 2);
+
+  ctx.save();
+  ctx.translate(pickX, pickY);
+  ctx.rotate(angle);
+  ctx.globalAlpha = 0.9;
+  ctx.fillStyle = '#AAAAAA';
+  ctx.fillRect(-14, -4, 28, 8);
+  ctx.fillRect(-16, -6, 10, 12);
+  ctx.fillRect( 14, -6,  5, 10);
+  ctx.fillStyle = '#8B6418';
+  ctx.fillRect(-3, 4, 6, 14);
+  ctx.restore();
+
+  // Spark burst at impact point
+  if (progress > 0.62) {
+    const sp = (progress - 0.62) / 0.38;
+    ctx.save();
+    ctx.globalAlpha = 1 - sp;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const r = sp * 24;
+      ctx.fillStyle = i % 2 === 0 ? '#FFFF00' : '#FF8800';
+      ctx.fillRect(oreX + Math.cos(a) * r - 2, oreY + Math.sin(a) * r - 2, 4, 4);
+    }
+    ctx.restore();
   }
 }
 
@@ -1134,6 +1249,14 @@ function update() {
   for (let i = joyRays.length - 1; i >= 0; i--) {
     if (--joyRays[i].timer <= 0) joyRays.splice(i, 1);
   }
+  if (miningAnim.active) {
+    miningAnim.timer--;
+    if (miningAnim.timer <= 0) {
+      miningAnim.oreArr.splice(miningAnim.oreIdx, 1);
+      worldItems.push({ id: miningAnim.oreType, x: miningAnim.ore.x, y: miningAnim.ore.y });
+      miningAnim = { active: false, timer: 0, maxTimer: 20, ore: null, oreArr: null, oreIdx: -1, oreType: '' };
+    }
+  }
 }
 
 function drawPipe(x, y) {
@@ -1193,6 +1316,7 @@ function nextLevel() {
   joyRays = [];
   swordSwing = { active: false, timer: 0 };
   useCooldown = 0;
+  miningAnim = { active: false, timer: 0, maxTimer: 20, ore: null, oreArr: null, oreIdx: -1, oreType: '' };
   initWorldItems();
   startBgMusic();
 }
@@ -1229,6 +1353,7 @@ function drawGameOver() {
 function draw() {
   ctx.clearRect(0, 0, W, H);
   drawBackground();
+  drawMiningFx();
   if (isForest()) drawForestTrees();
   platforms.forEach(drawPlatform);
   drawGround();

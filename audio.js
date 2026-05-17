@@ -72,6 +72,22 @@ function playGameOver() {
   }
 }
 
+function playPickaxeHit() {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const osc  = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(200, now);
+  osc.frequency.exponentialRampToValueAtTime(55, now + 0.18);
+  gain.gain.setValueAtTime(0.30, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+  osc.start(now);
+  osc.stop(now + 0.18);
+}
+
 function playSwordSwing() {
   if (audioCtx.state === 'suspended') audioCtx.resume();
   const osc  = audioCtx.createOscillator();
