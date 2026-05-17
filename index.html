@@ -81,7 +81,24 @@ function playSquish() {
   osc.stop(now + 0.18);
 }
 
+function resetGame() {
+  player.x = W / 2 - 20;
+  player.y = GROUND_TOP;
+  player.vy = 0;
+  player.onGround = true;
+  player.facingRight = true;
+  player.walkFrame = 0;
+  player.walkTimer = 0;
+  mobs = [];
+  score = 0;
+  spawnTimer = 0;
+  spawnMob(true, false);
+  spawnMob(true, true);
+  gameOver = false;
+}
+
 document.addEventListener('keydown', e => {
+  if (gameOver && (e.key === ' ' || e.key === 'Enter')) { resetGame(); return; }
   if (e.key === 'ArrowLeft')  keyInput.left  = true;
   if (e.key === 'ArrowRight') keyInput.right = true;
   if (e.key === ' ')          keyInput.jump  = true;
@@ -108,6 +125,7 @@ function pollGamepad() {
     gpRight = stickX >  0.3 || !!(gp.buttons[15]?.pressed);
     gpJump  = !!(gp.buttons[0]?.pressed);
     if (gpLeft || gpRight || gpJump) audioCtx.resume();
+    if (gameOver && gpJump) { resetGame(); return; }
     break;
   }
   input.left  = keyInput.left  || gpLeft;
@@ -216,6 +234,7 @@ let score = 0;
 let mobs = [];
 let spawnTimer = 0;
 const SPAWN_INTERVAL = 240; // кадров между новыми мобами
+let gameOver = false;
 
 function spawnMob(startOnScreen = false, fromRight = null) {
   if (fromRight === null) fromRight = Math.random() > 0.5;
@@ -293,9 +312,8 @@ function updateMobs() {
       score++;
       playSquish();
     } else {
-      // Боковое касание — отталкиваем игрока
-      const pushDir = player.x + SW / 2 < mob.x + SW / 2 ? -1 : 1;
-      player.x += pushDir * 5;
+      // Боковое касание — смерть
+      gameOver = true;
     }
   }
 }
@@ -478,6 +496,22 @@ function update() {
   updateMobs();
 }
 
+function drawGameOver() {
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#FF3333';
+  ctx.font = 'bold 60px monospace';
+  ctx.fillText('GAME OVER', W / 2, H / 2 - 24);
+  ctx.fillStyle = '#FFD700';
+  ctx.font = 'bold 24px monospace';
+  ctx.fillText(`Score: ${score}`, W / 2, H / 2 + 20);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '18px monospace';
+  ctx.fillText('Space / Enter / A — restart', W / 2, H / 2 + 56);
+  ctx.textAlign = 'left';
+}
+
 function draw() {
   ctx.clearRect(0, 0, W, H);
   drawBackground();
@@ -486,10 +520,11 @@ function draw() {
   drawMobs();
   drawSteve(player.x, player.y - SH, player.facingRight, input.left || input.right, player.walkFrame);
   drawHUD();
+  if (gameOver) drawGameOver();
 }
 
 function loop() {
-  update();
+  if (!gameOver) update();
   draw();
   requestAnimationFrame(loop);
 }
