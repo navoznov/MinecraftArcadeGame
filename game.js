@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.27';
+const VERSION = '1.0.28';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -15,6 +15,7 @@ const LEVEL_CONFIGS = [
   { theme: 'pyramid', mobType: 'husk',     flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'outpost',     mobType: 'pillager', flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'dark_forest', mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'mansion',    mobType: 'pillager', flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
 ];
 
 function levelCfg() {
@@ -144,6 +145,12 @@ const darkForestGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
 darkForestGradient.addColorStop(0,   '#020404');
 darkForestGradient.addColorStop(0.6, '#060C08');
 darkForestGradient.addColorStop(1,   '#0C1610');
+
+// Mansion sky gradient — deep gothic blue-black night
+const mansionGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
+mansionGradient.addColorStop(0,   '#040408');
+mansionGradient.addColorStop(0.5, '#060812');
+mansionGradient.addColorStop(1,   '#0A0C18');
 
 // Desert background cactus X positions
 const DESERT_CACTI = [
@@ -944,6 +951,7 @@ function drawGround() {
   if (isPyramid())    { drawGroundPyramid(); return; }
   if (isOutpost())    { drawGroundOutpost(); return; }
   if (isDarkForest()) { drawGroundDarkForest(); return; }
+  if (isMansion())    { drawGroundMansion(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -1015,6 +1023,7 @@ function drawPlatform(p) {
   if (isPyramid())    { drawPlatformPyramid(p); return; }
   if (isOutpost())    { drawPlatformOutpost(p); return; }
   if (isDarkForest()) { drawPlatformDarkForest(p); return; }
+  if (isMansion())    { drawPlatformMansion(p); return; }
   const platH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -1076,6 +1085,7 @@ function isDesert()  { return levelCfg().theme === 'desert'; }
 function isPyramid() { return levelCfg().theme === 'pyramid'; }
 function isOutpost()    { return levelCfg().theme === 'outpost'; }
 function isDarkForest() { return levelCfg().theme === 'dark_forest'; }
+function isMansion()    { return levelCfg().theme === 'mansion'; }
 function isNight()      { return levelCfg().theme === 'night'; }
 function isVillage() { return levelCfg().hasVillagers; }
 function isMine()    { return levelCfg().theme === 'mine'; }
@@ -1833,6 +1843,210 @@ function drawPlatformDarkForest(p) {
   ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
 }
 
+function drawMansionWindow(wx, wy) {
+  const ww = 22, wh = 26;
+  ctx.fillStyle = 'rgba(255,150,30,0.25)';
+  ctx.fillRect(wx - 3, wy - 3, ww + 6, wh + 6);
+  ctx.fillStyle = '#E08010';
+  ctx.fillRect(wx, wy, ww, wh);
+  ctx.fillStyle = '#FFC060';
+  ctx.fillRect(wx + 2, wy + 2, ww - 4, wh - 4);
+  ctx.fillStyle = '#180C04';
+  ctx.fillRect(wx, wy, ww, 2);
+  ctx.fillRect(wx, wy + wh - 2, ww, 2);
+  ctx.fillRect(wx, wy, 2, wh);
+  ctx.fillRect(wx + ww - 2, wy, 2, wh);
+  ctx.fillRect(wx + (ww >> 1) - 1, wy, 2, wh);
+  ctx.fillRect(wx, wy + (wh >> 1) - 1, ww, 2);
+}
+
+function drawMansionTree(tx) {
+  ctx.fillStyle = '#100A04';
+  ctx.fillRect(tx - 5, GROUND_TOP - 120, 10, 120);
+  ctx.fillStyle = '#1C1008';
+  ctx.fillRect(tx - 3, GROUND_TOP - 120, 4, 120);
+  ctx.fillStyle = '#0A1004';
+  ctx.fillRect(tx - 38, GROUND_TOP - 162, 76, 52);
+  ctx.fillRect(tx - 28, GROUND_TOP - 188, 56, 30);
+  ctx.fillRect(tx - 18, GROUND_TOP - 202, 36, 18);
+  ctx.fillStyle = '#0E1608';
+  ctx.fillRect(tx - 32, GROUND_TOP - 148, 20, 18);
+}
+
+function drawMansion() {
+  const mx = 262, mw = 276, mc = mx + (mw >> 1); // mc = 400
+
+  // Foundation — stone bricks
+  const fndY = GROUND_TOP - 20;
+  ctx.fillStyle = '#585858';
+  ctx.fillRect(mx, fndY, mw, 20);
+  ctx.fillStyle = '#686868';
+  for (let bx = mx; bx < mx + mw; bx += 22) ctx.fillRect(bx, fndY, 21, 9);
+  ctx.fillStyle = '#484848';
+  for (let bx = mx + 11; bx < mx + mw; bx += 22) ctx.fillRect(bx, fndY + 10, 21, 9);
+  ctx.fillStyle = '#383838';
+  ctx.fillRect(mx, fndY, mw, 1);
+
+  // Floor 1
+  const f1H = 62, f1Y = fndY - f1H;
+  ctx.fillStyle = '#281408';
+  ctx.fillRect(mx, f1Y, mw, f1H);
+  ctx.fillStyle = '#180C04';
+  for (let lx = mx; lx <= mx + mw; lx += 20) ctx.fillRect(lx, f1Y, 3, f1H);
+  ctx.fillRect(mx, f1Y, mw, 3);
+  ctx.fillRect(mx, f1Y + f1H - 3, mw, 3);
+  drawMansionWindow(mx + 22, f1Y + 16);
+  drawMansionWindow(mx + mw - 44, f1Y + 16);
+  // Door
+  ctx.fillStyle = '#1A0C04';
+  ctx.fillRect(mc - 16, f1Y + 18, 32, 44);
+  ctx.fillStyle = '#100802';
+  ctx.fillRect(mc - 13, f1Y + 22, 11, 36);
+  ctx.fillRect(mc + 2, f1Y + 22, 11, 36);
+  ctx.fillStyle = '#C09030';
+  ctx.fillRect(mc - 3, f1Y + 40, 5, 4);
+
+  // Ledge floor 1→2
+  const l12Y = f1Y - 10;
+  ctx.fillStyle = '#2E1A0A';
+  ctx.fillRect(mx - 12, l12Y, mw + 24, 10);
+  ctx.fillStyle = '#1A0E04';
+  for (let lx = mx - 12; lx < mx + mw + 12; lx += 14) ctx.fillRect(lx, l12Y, 2, 10);
+
+  // Floor 2
+  const f2H = 54, f2Y = l12Y - f2H;
+  ctx.fillStyle = '#281408';
+  ctx.fillRect(mx, f2Y, mw, f2H);
+  ctx.fillStyle = '#180C04';
+  for (let lx = mx; lx <= mx + mw; lx += 20) ctx.fillRect(lx, f2Y, 3, f2H);
+  ctx.fillRect(mx, f2Y, mw, 3);
+  ctx.fillRect(mx, f2Y + f2H - 3, mw, 3);
+  drawMansionWindow(mx + 20, f2Y + 14);
+  drawMansionWindow(mc - 11, f2Y + 14);
+  drawMansionWindow(mx + mw - 42, f2Y + 14);
+
+  // Ledge floor 2→3
+  const l23Y = f2Y - 8;
+  ctx.fillStyle = '#2E1A0A';
+  ctx.fillRect(mx - 8, l23Y, mw + 16, 8);
+  ctx.fillStyle = '#1A0E04';
+  for (let lx = mx - 8; lx < mx + mw + 8; lx += 12) ctx.fillRect(lx, l23Y, 2, 8);
+
+  // Floor 3 (attic — narrower)
+  const f3W = mw - 54, f3X = mx + 27, f3H = 42, f3Y = l23Y - f3H;
+  ctx.fillStyle = '#281408';
+  ctx.fillRect(f3X, f3Y, f3W, f3H);
+  ctx.fillStyle = '#180C04';
+  for (let lx = f3X; lx <= f3X + f3W; lx += 20) ctx.fillRect(lx, f3Y, 3, f3H);
+  ctx.fillRect(f3X, f3Y, f3W, 3);
+  drawMansionWindow(mc - 11, f3Y + 8);
+
+  // Gabled roof
+  const roofH = 55, roofPeakY = f3Y - roofH;
+  const roofHW = (f3W >> 1) + 20;
+  ctx.fillStyle = '#1C0A04';
+  for (let i = 0; i <= roofH; i++) {
+    const hw = Math.round(roofHW * (roofH - i) / roofH);
+    ctx.fillRect(mc - hw, f3Y - i, hw * 2, 2);
+  }
+  ctx.fillStyle = '#130702';
+  for (let i = 6; i < roofH; i += 8) {
+    const hw = Math.round(roofHW * (roofH - i) / roofH);
+    ctx.fillRect(mc - hw, f3Y - i, hw * 2, 2);
+  }
+  ctx.fillStyle = '#3A1A08';
+  ctx.fillRect(mc - 3, roofPeakY, 6, 8);
+
+  // Chimneys
+  ctx.fillStyle = '#484848';
+  ctx.fillRect(mc - 52, roofPeakY - 22, 16, 30);
+  ctx.fillStyle = '#585858';
+  for (let cy = roofPeakY - 22; cy < roofPeakY + 8; cy += 8) ctx.fillRect(mc - 52, cy, 16, 3);
+  ctx.fillStyle = '#303030';
+  ctx.fillRect(mc - 54, roofPeakY - 22, 20, 5);
+  ctx.fillStyle = '#484848';
+  ctx.fillRect(mc + 36, roofPeakY - 18, 16, 26);
+  ctx.fillStyle = '#585858';
+  for (let cy = roofPeakY - 18; cy < roofPeakY + 8; cy += 8) ctx.fillRect(mc + 36, cy, 16, 3);
+  ctx.fillStyle = '#303030';
+  ctx.fillRect(mc + 34, roofPeakY - 18, 20, 5);
+
+  // Ominous banners
+  for (const bx of [mx + 6, mx + mw - 18]) {
+    ctx.fillStyle = '#780808';
+    ctx.fillRect(bx, f2Y - 32, 12, 28);
+    ctx.fillStyle = '#4A0404';
+    ctx.fillRect(bx + 2, f2Y - 28, 8, 4);
+    ctx.fillRect(bx + 2, f2Y - 20, 8, 4);
+    ctx.fillRect(bx + 2, f2Y - 12, 8, 4);
+    ctx.fillStyle = '#7A5028';
+    ctx.fillRect(bx - 1, f2Y - 40, 2, 40);
+  }
+}
+
+function drawBackgroundMansion() {
+  ctx.fillStyle = mansionGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  // A handful of stars (top only — mansion and trees block the rest)
+  ctx.fillStyle = '#C8C8D8';
+  for (const s of STARS) {
+    if (s.y > 140) continue;
+    if (s.x > 200 && s.x < 580) continue;
+    ctx.fillRect(s.x, s.y, s.s, s.s);
+  }
+
+  // Pale foggy moon (top-left)
+  ctx.fillStyle = '#9090A8';
+  ctx.fillRect(80, 20, 34, 34);
+  ctx.fillStyle = '#707088';
+  ctx.fillRect(86, 26, 10, 10);
+  ctx.fillRect(78, 34, 8, 8);
+
+  // Fog atmosphere — purple-gray haze at mid-horizon
+  ctx.fillStyle = 'rgba(60,50,80,0.18)';
+  ctx.fillRect(0, GROUND_TOP - 140, W, 140);
+  ctx.fillStyle = 'rgba(60,50,80,0.10)';
+  ctx.fillRect(0, GROUND_TOP - 240, W, 100);
+
+  // Flanking dark oak trees
+  drawMansionTree(58);
+  drawMansionTree(148);
+  drawMansionTree(650);
+  drawMansionTree(742);
+
+  // The mansion itself
+  drawMansion();
+}
+
+function drawGroundMansion() {
+  ctx.fillStyle = '#1A2010';
+  ctx.fillRect(0, GROUND_TOP, W, 12);
+  ctx.fillStyle = '#121508';
+  ctx.fillRect(0, GROUND_TOP + 12, W, H - GROUND_TOP - 12);
+  ctx.fillStyle = '#222C14';
+  for (let bx = 0; bx < W; bx += BLOCK) ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, 4);
+  // Stone cobblestone patches along mansion grounds
+  ctx.fillStyle = '#404040';
+  for (let bx = 8; bx < W; bx += 48) ctx.fillRect(bx, GROUND_TOP + 4, 18, 6);
+  ctx.fillStyle = '#303030';
+  for (let bx = 24; bx < W; bx += 56) ctx.fillRect(bx, GROUND_TOP + 8, 12, 4);
+}
+
+function drawPlatformMansion(p) {
+  const platH = 24;
+  ctx.fillStyle = '#2E1A0C';
+  ctx.fillRect(p.x, p.y, p.w, platH);
+  ctx.fillStyle = '#3E2414';
+  ctx.fillRect(p.x, p.y, p.w, 6);
+  ctx.fillStyle = '#1E1006';
+  for (let bx = p.x; bx < p.x + p.w; bx += 18) ctx.fillRect(bx, p.y, 2, platH);
+  ctx.fillStyle = '#4A2E18';
+  for (let bx = p.x + 4; bx < p.x + p.w; bx += 18) ctx.fillRect(bx, p.y + 1, 10, 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
+}
+
 function drawBackground() {
   if (isMine()) { drawBackgroundMine(); return; }
   if (isForest()) { drawBackgroundForest(); return; }
@@ -1842,6 +2056,7 @@ function drawBackground() {
   if (isPyramid())    { drawBackgroundPyramid(); return; }
   if (isOutpost())    { drawBackgroundOutpost(); return; }
   if (isDarkForest()) { drawBackgroundDarkForest(); return; }
+  if (isMansion())    { drawBackgroundMansion(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
