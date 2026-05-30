@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.17';
+const VERSION = '1.0.18';
 
 const W = 800;
 const H = 450;
@@ -1309,15 +1309,18 @@ function drawCactus(bx) {
   const armH = 20;
   const armW = 18;
   ctx.fillStyle = '#3A7A20';
-  ctx.fillRect(tx - armW, GROUND_TOP - armY - armH + u, u, armH);
-  ctx.fillRect(tx - armW, GROUND_TOP - armY - armH + u, armW, u);
-  ctx.fillRect(tx + u,    GROUND_TOP - armY - armH + u, u, armH);
-  ctx.fillRect(tx + u,    GROUND_TOP - armY - armH + u, armW, u);
+  // Left arm: vertical goes UP, horizontal connector at base
+  ctx.fillRect(tx - armW, GROUND_TOP - armY - armH, u, armH);
+  ctx.fillRect(tx - armW, GROUND_TOP - armY,        armW, u);
+  // Right arm: vertical goes UP, horizontal connector at base
+  ctx.fillRect(tx + u,    GROUND_TOP - armY - armH, u, armH);
+  ctx.fillRect(tx + u,    GROUND_TOP - armY,        armW, u);
+  // Trunk (drawn over arm bases to clean up joints)
   ctx.fillRect(tx, GROUND_TOP - h, u, h);
   ctx.fillStyle = '#2A5A14';
-  ctx.fillRect(tx + 5,          GROUND_TOP - h, 3, h);
-  ctx.fillRect(tx - armW + 5,   GROUND_TOP - armY - armH + u, 3, armH);
-  ctx.fillRect(tx + u + 5,      GROUND_TOP - armY - armH + u, 3, armH);
+  ctx.fillRect(tx + 5,        GROUND_TOP - h,           3, h);
+  ctx.fillRect(tx - armW + 5, GROUND_TOP - armY - armH, 3, armH);
+  ctx.fillRect(tx + u + 5,    GROUND_TOP - armY - armH, 3, armH);
 }
 
 function drawBackgroundDesert() {
