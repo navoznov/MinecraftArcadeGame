@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.15';
+const VERSION = '1.0.16';
 
 const W = 800;
 const H = 450;
@@ -1326,12 +1326,12 @@ function drawBackgroundDesert() {
 
   // Hot sun (upper right, large with halo)
   ctx.fillStyle = '#FFEE60';
-  ctx.fillRect(W - 104, 22, 52, 52);
+  ctx.fillRect(W - 104, 57, 52, 52);
   ctx.fillStyle = '#FFF8A0';
-  ctx.fillRect(W - 96, 14, 36, 8);
-  ctx.fillRect(W - 96, 74, 36, 8);
-  ctx.fillRect(W - 112, 30, 8, 36);
-  ctx.fillRect(W - 44,  30, 8, 36);
+  ctx.fillRect(W - 96, 49, 36, 8);
+  ctx.fillRect(W - 96, 109, 36, 8);
+  ctx.fillRect(W - 112, 65, 8, 36);
+  ctx.fillRect(W - 44,  65, 8, 36);
 
   // Far dunes
   ctx.fillStyle = '#B89050';
