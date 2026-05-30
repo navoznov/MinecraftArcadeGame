@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 
 const W = 800;
 const H = 450;
@@ -1044,13 +1044,6 @@ function drawHUD() {
   ctx.font = 'bold 18px monospace';
   ctx.fillText(`Score: ${score}   Lv.${level}`, 18, 30);
 
-  if (handSlot) {
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.fillRect(8, 44, 172, 20);
-    ctx.fillStyle = '#AAFFAA';
-    ctx.font = '12px monospace';
-    ctx.fillText(`Hand: ${handSlot}  [E] use`, 14, 59);
-  }
 
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
   ctx.fillRect(MUTE_BTN.x, MUTE_BTN.y, MUTE_BTN.w, MUTE_BTN.h);
@@ -1059,6 +1052,17 @@ function drawHUD() {
   ctx.textAlign = 'center';
   ctx.fillText(bgMusicMuted ? '✕♪' : '♪', MUTE_BTN.x + MUTE_BTN.w / 2, MUTE_BTN.y + 22);
   ctx.textAlign = 'left';
+
+  if (handSlot) {
+    const sx = 8;
+    const sy = H - ISLOT - 8;
+    drawSlot(sx, sy, handSlot);
+    ctx.font = '9px monospace';
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.textAlign = 'center';
+    ctx.fillText('[E]', sx + ISLOT / 2, sy + ISLOT + 10);
+    ctx.textAlign = 'left';
+  }
 
   ctx.font = '10px monospace';
   ctx.fillStyle = 'rgba(255,255,255,0.45)';
