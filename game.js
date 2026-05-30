@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.3';
+const VERSION = '1.0.4';
 
 const W = 800;
 const H = 450;
@@ -982,17 +982,20 @@ function drawHouse(h) {
     ctx.fillRect(wx, sy, ww, 2);
   }
 
-  // Roof (stepped cobblestone)
+  // Roof (stepped cobblestone) — narrow at top, wide at bottom
   ctx.fillStyle = '#888888';
   const steps = 4;
+  const stepH = Math.ceil(h.rh / steps);
   for (let s = 0; s < steps; s++) {
-    const rx = wx + s * (ww / (steps * 2));
-    const rw = ww - s * (ww / steps);
-    const ry = wy - h.rh + s * Math.ceil(h.rh / steps);
-    ctx.fillRect(rx, ry, rw, Math.ceil(h.rh / steps) + 1);
+    const stepW = Math.round(ww * (s + 1) / steps);
+    const rx = wx + Math.round((ww - stepW) / 2);
+    const ry = wy - h.rh + s * stepH;
+    ctx.fillRect(rx, ry, stepW, stepH + 1);
   }
+  // Highlight on the top (narrowest) step
   ctx.fillStyle = '#AAAAAA';
-  ctx.fillRect(wx + 2, wy - h.rh, ww - 4, 4);
+  const topW = Math.round(ww / steps);
+  ctx.fillRect(wx + Math.round((ww - topW) / 2), wy - h.rh, topW, 3);
 
   // Windows
   ctx.fillStyle = '#90C8F0';
