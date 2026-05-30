@@ -1,6 +1,8 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
+const VERSION = '1.0.0';
+
 const W = 800;
 const H = 450;
 canvas.width = W;
@@ -1056,6 +1058,12 @@ function drawHUD() {
   ctx.font = 'bold 18px monospace';
   ctx.textAlign = 'center';
   ctx.fillText(bgMusicMuted ? '✕♪' : '♪', MUTE_BTN.x + MUTE_BTN.w / 2, MUTE_BTN.y + 22);
+  ctx.textAlign = 'left';
+
+  ctx.font = '10px monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.textAlign = 'right';
+  ctx.fillText(`v${VERSION}`, W - 6, H - 5);
   ctx.textAlign = 'left';
 }
 
