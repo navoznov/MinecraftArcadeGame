@@ -4,15 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Git Workflow
 
-Each feature must be developed in a separate branch. After pushing, create a pull request into `main`.
+Development happens directly in `main`. Do **not** create separate branches or pull requests unless the user explicitly asks for it.
 
 When implementing any feature, update `README.md` to reflect the changes — add a changelog entry describing what was added or modified.
 
+Before every commit, bump the `VERSION` constant in `game.js` (patch increment by default, e.g. `1.0.0 → 1.0.1`).
+
 ```
-git checkout -b feature/my-feature
-# ... make changes, commit ...
-git push -u origin feature/my-feature
-gh pr create --base main
+# ... make changes ...
+# bump VERSION in game.js
+git add ...
+git commit -m "..."
+git push
 ```
 
 ## Implemented Features
