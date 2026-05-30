@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.24';
+const VERSION = '1.0.25';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -1472,16 +1472,15 @@ function drawEgyptPyramid(cx, baseW, steps) {
     const w = Math.round(stepW * (s + 1));
     const y = GROUND_TOP - totalH + s * stepH;
     const x = cx - Math.round(w / 2);
-    const half = Math.ceil(w / 2);
-    ctx.fillStyle = '#C89A3A';
-    ctx.fillRect(x, y, half, stepH);
+    const half = Math.floor(w / 2);
+    // Sun is upper-right → left half in shadow, right half lit
     ctx.fillStyle = '#7A5A18';
+    ctx.fillRect(x, y, half, stepH);
+    ctx.fillStyle = '#C89A3A';
     ctx.fillRect(x + half, y, w - half, stepH);
     ctx.fillStyle = '#A07828';
     ctx.fillRect(x, y, w, 2);
   }
-  ctx.fillStyle = 'rgba(0,0,0,0.18)';
-  ctx.fillRect(cx, GROUND_TOP - steps * stepH, Math.round(baseW / 2), steps * stepH);
 }
 
 function drawBackgroundPyramid() {
