@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.4';
+const VERSION = '1.0.5';
 
 const W = 800;
 const H = 450;
@@ -504,7 +504,7 @@ function updatePhantoms() {
 function updateMobs() {
   spawnTimer++;
   const aliveMobs = mobs.filter(m => m.alive).length;
-  if (spawnTimer >= spawnInterval && aliveMobs < 5 && !pipeVisible) {
+  if (spawnTimer >= spawnInterval && aliveMobs < 5 && !pipeVisible && !isVillage()) {
     spawnTimer = 0;
     spawnMob();
   }
@@ -1616,7 +1616,7 @@ function drawLevelComplete() {
 function nextLevel() {
   level++;
   levelKills    = 0;
-  pipeVisible   = false;
+  pipeVisible   = isVillage();
   portalFrame   = 0;
   levelComplete = false;
   if (isMine()) regenerateOreBlocks();
@@ -1631,8 +1631,10 @@ function nextLevel() {
   player.walkTimer = 0;
   mobs = [];
   spawnTimer = 0;
-  spawnMob(true, false);
-  spawnMob(true, true);
+  if (!isVillage()) {
+    spawnMob(true, false);
+    spawnMob(true, true);
+  }
   phantoms = [];
   phantomTimer = Math.floor(spawnInterval / 2);
   paused = false;
