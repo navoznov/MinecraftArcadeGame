@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.1';
+const VERSION = '1.0.2';
 
 const W = 800;
 const H = 450;
@@ -1054,13 +1054,19 @@ function drawHUD() {
   ctx.textAlign = 'left';
 
   if (handSlot) {
+    const scale = 0.5;
+    const slotPx = ISLOT * scale;           // 26px
     const sx = 8;
-    const sy = H - ISLOT - 8;
-    drawSlot(sx, sy, handSlot);
+    const sy = H - slotPx - 14;            // 14px снизу: 5px отступ + 9px под текст [E]
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.scale(scale, scale);
+    drawSlot(0, 0, handSlot);
+    ctx.restore();
     ctx.font = '9px monospace';
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.textAlign = 'center';
-    ctx.fillText('[E]', sx + ISLOT / 2, sy + ISLOT + 10);
+    ctx.fillText('[E]', sx + slotPx / 2, sy + slotPx + 9);
     ctx.textAlign = 'left';
   }
 
