@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.5';
+const VERSION = '1.0.6';
 
 const W = 800;
 const H = 450;
@@ -120,6 +120,7 @@ let mobSpeed      = 1.4;
 let spawnInterval = 240;
 let score = 0;
 let mobs = [];
+let villagers = [];
 let spawnTimer = 0;
 let gameOver    = false;
 let levelComplete = false;
@@ -234,6 +235,7 @@ function resetGame() {
   player.walkFrame = 0;
   player.walkTimer = 0;
   mobs = [];
+  villagers = [];
   score = 0;
   spawnTimer = 0;
   level         = 1;
@@ -600,6 +602,37 @@ function drawSkeleton(x, y, facingRight, walking, frame, alpha) {
   ctx.fillRect(bx, handY + CELL, CELL, CELL * 2);
 
   ctx.restore();
+}
+
+function initVillagers() {
+  villagers = [
+    { x: 110, vx:  0.6, facingRight: true,  walkFrame: 0, walkTimer: 0, minX:  50, maxX: 300 },
+    { x: 420, vx: -0.5, facingRight: false, walkFrame: 0, walkTimer: 8, minX: 280, maxX: 540 },
+    { x: 560, vx:  0.7, facingRight: true,  walkFrame: 0, walkTimer: 4, minX: 400, maxX: 650 },
+  ];
+}
+
+function updateVillagers() {
+  if (!isVillage()) return;
+  for (const v of villagers) {
+    v.x += v.vx;
+    v.walkTimer++;
+    if (v.walkTimer > 16) { v.walkTimer = 0; v.walkFrame = 1 - v.walkFrame; }
+    if (v.x < v.minX)        { v.vx = Math.abs(v.vx);  v.facingRight = true; }
+    if (v.x + SW > v.maxX)   { v.vx = -Math.abs(v.vx); v.facingRight = false; }
+  }
+}
+
+function drawVillager(x, y, facingRight, frame) {
+  const legOffset = frame === 0 ? 3 : -3;
+  drawSprite(VILLAGER_PALETTE, VILLAGER, x, y, facingRight, legOffset);
+}
+
+function drawVillagers() {
+  if (!isVillage()) return;
+  for (const v of villagers) {
+    drawVillager(v.x, GROUND_TOP - SH, v.facingRight, v.walkFrame);
+  }
 }
 
 function drawMobs() {
@@ -1529,6 +1562,7 @@ function update() {
 
   updateMobs();
   updatePhantoms();
+  updateVillagers();
 
   if (useCooldown > 0) useCooldown--;
   if (swordSwing.active && --swordSwing.timer <= 0) swordSwing.active = false;
@@ -1635,6 +1669,8 @@ function nextLevel() {
     spawnMob(true, false);
     spawnMob(true, true);
   }
+  villagers = [];
+  if (isVillage()) initVillagers();
   phantoms = [];
   phantomTimer = Math.floor(spawnInterval / 2);
   paused = false;
@@ -1689,6 +1725,7 @@ function draw() {
   drawWorldItems();
   drawPhantoms();
   drawMobs();
+  drawVillagers();
   drawSteve(player.x, player.y - SH, player.facingRight, input.left || input.right, player.walkFrame);
   drawJoyRays();
   drawSwordSwing();
