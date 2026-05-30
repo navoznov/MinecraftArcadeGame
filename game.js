@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.30';
+const VERSION = '1.0.31';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -18,6 +18,7 @@ const LEVEL_CONFIGS = [
   { theme: 'mansion',    mobType: 'pillager', flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'swamp',      mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'underwater', mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'ice',        mobType: 'skeleton', flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
 ];
 
 function levelCfg() {
@@ -175,6 +176,22 @@ const underwaterGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
 underwaterGradient.addColorStop(0,   '#04101A');
 underwaterGradient.addColorStop(0.4, '#062234');
 underwaterGradient.addColorStop(1,   '#083A48');
+
+// Ice spikes sky gradient — pale arctic blue to frosty white horizon
+const iceGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
+iceGradient.addColorStop(0,   '#88AECE');
+iceGradient.addColorStop(0.5, '#C0D8EC');
+iceGradient.addColorStop(1,   '#E4F0F8');
+
+// Deterministic snowflake positions for ice level
+const SNOWFLAKES = [];
+for (let i = 0; i < 50; i++) {
+  SNOWFLAKES.push({
+    x: (i * 337 + 53) % (W - 10) + 5,
+    y: (i * 191 + 37) % (GROUND_TOP - 20) + 5,
+    s: i % 5 === 0 ? 3 : 2,
+  });
+}
 
 // Desert background cactus X positions
 const DESERT_CACTI = [
@@ -978,6 +995,7 @@ function drawGround() {
   if (isMansion())    { drawGroundMansion(); return; }
   if (isSwamp())      { drawGroundSwamp(); return; }
   if (isUnderwater()) { drawGroundUnderwater(); return; }
+  if (isIce())        { drawGroundIce(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -1052,6 +1070,7 @@ function drawPlatform(p) {
   if (isMansion())    { drawPlatformMansion(p); return; }
   if (isSwamp())      { drawPlatformSwamp(p); return; }
   if (isUnderwater()) { drawPlatformUnderwater(p); return; }
+  if (isIce())        { drawPlatformIce(p); return; }
   const platH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -1116,6 +1135,7 @@ function isDarkForest() { return levelCfg().theme === 'dark_forest'; }
 function isMansion()    { return levelCfg().theme === 'mansion'; }
 function isSwamp()      { return levelCfg().theme === 'swamp'; }
 function isUnderwater() { return levelCfg().theme === 'underwater'; }
+function isIce()       { return levelCfg().theme === 'ice'; }
 function isNight()      { return levelCfg().theme === 'night'; }
 function isVillage() { return levelCfg().hasVillagers; }
 function isMine()    { return levelCfg().theme === 'mine'; }
@@ -2349,6 +2369,103 @@ function drawPlatformMansion(p) {
   ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
 }
 
+function drawIceSpike(tx, h, w) {
+  // Tall narrow ice spike silhouette
+  ctx.fillStyle = '#C8E0F0';
+  ctx.beginPath();
+  ctx.moveTo(tx - w / 2, GROUND_TOP);
+  ctx.lineTo(tx, GROUND_TOP - h);
+  ctx.lineTo(tx + w / 2, GROUND_TOP);
+  ctx.fill();
+  // Highlight edge
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.beginPath();
+  ctx.moveTo(tx - w / 2 + 2, GROUND_TOP);
+  ctx.lineTo(tx - w / 4, GROUND_TOP - h + 10);
+  ctx.lineTo(tx - w / 4 + 4, GROUND_TOP - h + 10);
+  ctx.lineTo(tx + 4, GROUND_TOP);
+  ctx.fill();
+}
+
+function drawBackgroundIce() {
+  ctx.fillStyle = iceGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  // Distant snow-covered hills
+  ctx.fillStyle = '#D8ECF4';
+  ctx.fillRect(0,   GROUND_TOP - 80, 140, 80);
+  ctx.fillRect(90,  GROUND_TOP - 110, 180, 110);
+  ctx.fillRect(240, GROUND_TOP - 70,  140, 70);
+  ctx.fillRect(340, GROUND_TOP - 120, 200, 120);
+  ctx.fillRect(510, GROUND_TOP - 85,  160, 85);
+  ctx.fillRect(640, GROUND_TOP - 100, 160, 100);
+  // Rounded hill tops (arcs faked with stacked rects)
+  ctx.fillStyle = '#E8F4F8';
+  for (const [cx, r] of [[70,55],[180,72],[310,48],[440,78],[590,56],[720,64]]) {
+    for (let dy = 0; dy < r; dy++) {
+      const hw = Math.round(Math.sqrt(r * r - (r - dy) * (r - dy)));
+      ctx.fillRect(cx - hw, GROUND_TOP - r * 2 + dy, hw * 2, 1);
+    }
+  }
+
+  // Background ice spikes
+  ctx.globalAlpha = 0.55;
+  drawIceSpike(55,  130, 22);
+  drawIceSpike(210, 170, 28);
+  drawIceSpike(420, 145, 24);
+  drawIceSpike(620, 160, 26);
+  drawIceSpike(755, 120, 18);
+  ctx.globalAlpha = 1;
+
+  // Snowflakes
+  ctx.fillStyle = 'rgba(255,255,255,0.80)';
+  for (const f of SNOWFLAKES) ctx.fillRect(f.x, f.y, f.s, f.s);
+
+  // Faint ground-level ice mist
+  ctx.fillStyle = 'rgba(200,228,244,0.18)';
+  ctx.fillRect(0, GROUND_TOP - 28, W, 28);
+}
+
+function drawGroundIce() {
+  // Packed snow cap
+  ctx.fillStyle = '#E8F4F8';
+  ctx.fillRect(0, GROUND_TOP, W, 10);
+  ctx.fillStyle = '#D0E8F2';
+  for (let bx = 0; bx < W; bx += BLOCK) ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, 4);
+  // Packed ice layer
+  ctx.fillStyle = '#7AAECE';
+  ctx.fillRect(0, GROUND_TOP + 10, W, H - GROUND_TOP - 10);
+  ctx.fillStyle = '#6898BC';
+  for (let bx = 0; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_TOP + 10, BLOCK - 1, BLOCK - 1);
+  }
+  // Ice sheen highlights
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  for (let bx = 4; bx < W; bx += BLOCK) ctx.fillRect(bx, GROUND_TOP + 11, 8, 3);
+}
+
+function drawPlatformIce(p) {
+  const platH = 18;
+  // Packed ice base
+  ctx.fillStyle = '#88B8D8';
+  ctx.fillRect(p.x, p.y, p.w, platH);
+  // Ice crack lines (horizontal block seams)
+  ctx.fillStyle = '#6898BC';
+  for (let ty = p.y + 9; ty < p.y + platH; ty += 9) ctx.fillRect(p.x, ty, p.w, 1);
+  // Vertical block seams
+  ctx.fillStyle = '#6898BC';
+  for (let bx = p.x + 18; bx < p.x + p.w; bx += 18) ctx.fillRect(bx, p.y, 1, platH);
+  // Snow cap on top
+  ctx.fillStyle = '#E8F4F8';
+  ctx.fillRect(p.x, p.y, p.w, 4);
+  // Sheen
+  ctx.fillStyle = 'rgba(255,255,255,0.30)';
+  for (let bx = p.x + 2; bx < p.x + p.w - 2; bx += 18) ctx.fillRect(bx, p.y + 4, 8, 2);
+  // Shadow underside
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 3);
+}
+
 function drawBackground() {
   if (isMine()) { drawBackgroundMine(); return; }
   if (isForest()) { drawBackgroundForest(); return; }
@@ -2361,6 +2478,7 @@ function drawBackground() {
   if (isMansion())    { drawBackgroundMansion(); return; }
   if (isSwamp())      { drawBackgroundSwamp(); return; }
   if (isUnderwater()) { drawBackgroundUnderwater(); return; }
+  if (isIce())        { drawBackgroundIce(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
