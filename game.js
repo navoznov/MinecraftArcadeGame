@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.9';
+const VERSION = '1.0.10';
 
 const W = 800;
 const H = 450;
@@ -379,7 +379,12 @@ canvas.addEventListener('click', e => {
           const it  = inventory[idx];
           if (it) {
             const si = FARMER_SHOP.find(s => s.id === it);
-            if (si) { inventory[idx] = null; emeraldCount += si.price; }
+            if (si) {
+              inventory[idx] = null;
+              const emSlot = inventory.indexOf('emerald');
+              if (emSlot >= 0) { emeraldCount += si.price; }
+              else { inventory[idx] = 'emerald'; emeraldCount += si.price; }
+            }
           }
           return;
         }
@@ -392,7 +397,7 @@ canvas.addEventListener('click', e => {
       if (cx >= shopX2 && cx < TRADE_PX + TRADE_PW - 8 && cy >= shopY2 && cy < shopY2 + TSLOT) {
         if (emeraldCount >= si.price) {
           const slot = inventory.indexOf(null);
-          if (slot >= 0) { emeraldCount -= si.price; inventory[slot] = si.id; }
+          if (slot >= 0) { emeraldCount -= si.price; inventory[slot] = si.id; syncEmeraldSlot(); }
         }
         return;
       }
@@ -700,6 +705,14 @@ function drawVillager(x, y, facingRight, frame, type) {
   if (type === 'farmer')      drawSprite(FARMER_PALETTE,     FARMER,   x, y, facingRight, legOffset);
   else if (type === 'blacksmith') drawSprite(BLACKSMITH_PALETTE, VILLAGER, x, y, facingRight, legOffset);
   else                        drawSprite(VILLAGER_PALETTE,   VILLAGER, x, y, facingRight, legOffset);
+}
+
+function syncEmeraldSlot() {
+  if (emeraldCount <= 0) {
+    emeraldCount = 0;
+    const idx = inventory.indexOf('emerald');
+    if (idx >= 0) inventory[idx] = null;
+  }
 }
 
 function findNearbyFarmer() {
@@ -1579,7 +1592,16 @@ function drawSlot(sx, sy, item) {
   ctx.fillRect(sx + ISLOT - 4, sy + 2,  2, ISLOT - 4);
   ctx.fillStyle = '#595959';
   ctx.fillRect(sx + 4, sy + 4, ISLOT - 8, ISLOT - 8);
-  if (item) drawItemIcon(item, sx, sy);
+  if (item) {
+    drawItemIcon(item, sx, sy);
+    if (item === 'emerald') {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(`x${emeraldCount}`, sx + ISLOT - 3, sy + ISLOT - 3);
+      ctx.textAlign = 'left';
+    }
+  }
 }
 
 function drawTSlot(sx, sy, item) {
@@ -1604,6 +1626,13 @@ function drawTSlot(sx, sy, item) {
     ctx.scale(sc, sc);
     drawItemIcon(item, 0, 0);
     ctx.restore();
+    if (item === 'emerald') {
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(`x${emeraldCount}`, sx + TSLOT - 2, sy + TSLOT - 2);
+      ctx.textAlign = 'left';
+    }
   }
 }
 
@@ -1837,8 +1866,18 @@ function update() {
       const overlapY = player.y > item.y && player.y - SH < item.y + ISLOT;
       if (overlapX && overlapY) {
         if (item.id === 'emerald') {
-          emeraldCount++;
-          worldItems.splice(i, 1);
+          const emSlot = inventory.indexOf('emerald');
+          if (emSlot >= 0) {
+            emeraldCount++;
+            worldItems.splice(i, 1);
+          } else {
+            const emptySlot = inventory.indexOf(null);
+            if (emptySlot >= 0) {
+              inventory[emptySlot] = 'emerald';
+              emeraldCount++;
+              worldItems.splice(i, 1);
+            }
+          }
         } else {
           const slot = inventory.indexOf(null);
           if (slot >= 0) { inventory[slot] = item.id; worldItems.splice(i, 1); }
