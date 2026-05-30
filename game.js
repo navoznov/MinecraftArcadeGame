@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.2';
+const VERSION = '1.0.3';
 
 const W = 800;
 const H = 450;
@@ -645,6 +645,7 @@ function drawGround() {
   if (isMine()) { drawGroundMine(); return; }
   if (isForest()) { drawGroundForest(); return; }
   if (isNether()) { drawGroundNether(); return; }
+  if (isVillage()) { drawGroundVillage(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -687,6 +688,7 @@ function drawPlatform(p) {
   if (isMine()) { drawPlatformMine(p); return; }
   if (isForest()) { drawPlatformBranch(p); return; }
   if (isNether()) { drawPlatformNether(p); return; }
+  if (isVillage()) { drawPlatformVillage(p); return; }
   const platH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -748,8 +750,12 @@ function isNight() {
   return level % 2 === 0;
 }
 
+function isVillage() {
+  return level === 7;
+}
+
 function isMine() {
-  return level % 4 === 3;
+  return level % 4 === 3 && !isVillage();
 }
 
 function isForest() {
@@ -953,10 +959,135 @@ function drawBackgroundNether() {
   }
 }
 
+// Village house positions for background silhouettes
+const VILLAGE_HOUSES = [
+  { x: 15,  ww: 95,  wh: 95,  rh: 32 },
+  { x: 185, ww: 72,  wh: 80,  rh: 26 },
+  { x: 330, ww: 115, wh: 110, rh: 40 },
+  { x: 530, ww: 80,  wh: 88,  rh: 28 },
+  { x: 682, ww: 90,  wh: 92,  rh: 30 },
+];
+
+function drawHouse(h) {
+  const base = GROUND_TOP;
+  const wx = h.x, wy = base - h.wh, ww = h.ww, wh = h.wh;
+
+  // Wall
+  ctx.fillStyle = '#C8A060';
+  ctx.fillRect(wx, wy, ww, wh);
+  ctx.fillStyle = '#A07840';
+  ctx.fillRect(wx + ww - 6, wy, 6, wh);
+  ctx.fillStyle = '#785020';
+  for (let sy = wy + 12; sy < wy + wh; sy += 16) {
+    ctx.fillRect(wx, sy, ww, 2);
+  }
+
+  // Roof (stepped cobblestone)
+  ctx.fillStyle = '#888888';
+  const steps = 4;
+  for (let s = 0; s < steps; s++) {
+    const rx = wx + s * (ww / (steps * 2));
+    const rw = ww - s * (ww / steps);
+    const ry = wy - h.rh + s * Math.ceil(h.rh / steps);
+    ctx.fillRect(rx, ry, rw, Math.ceil(h.rh / steps) + 1);
+  }
+  ctx.fillStyle = '#AAAAAA';
+  ctx.fillRect(wx + 2, wy - h.rh, ww - 4, 4);
+
+  // Windows
+  ctx.fillStyle = '#90C8F0';
+  const winY = wy + Math.floor(wh * 0.25);
+  const winH = Math.floor(wh * 0.28);
+  const winW = Math.floor(ww * 0.18);
+  ctx.fillRect(wx + 8,          winY, winW, winH);
+  ctx.fillRect(wx + ww - 8 - winW, winY, winW, winH);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(wx + 8 + winW / 2 - 1, winY, 2, winH);
+  ctx.fillRect(wx + 8, winY + winH / 2 - 1, winW, 2);
+  ctx.fillRect(wx + ww - 8 - winW + winW / 2 - 1, winY, 2, winH);
+  ctx.fillRect(wx + ww - 8 - winW, winY + winH / 2 - 1, winW, 2);
+
+  // Door
+  ctx.fillStyle = '#5A3010';
+  const dw = Math.floor(ww * 0.2);
+  const dh = Math.floor(wh * 0.35);
+  const dx = wx + Math.floor((ww - dw) / 2);
+  ctx.fillRect(dx, wy + wh - dh, dw, dh);
+  ctx.fillStyle = '#7A5030';
+  ctx.fillRect(dx + 2, wy + wh - dh + 3, 4, 4);
+}
+
+function drawBackgroundVillage() {
+  // Day sky
+  ctx.fillStyle = dayGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  // Sun
+  ctx.fillStyle = '#FFD700';
+  ctx.fillRect(680, 30, 44, 44);
+  ctx.fillStyle = '#FFF176';
+  ctx.fillRect(674, 44, 6, 6);
+  ctx.fillRect(724, 44, 6, 6);
+  ctx.fillRect(694, 24, 6, 6);
+  ctx.fillRect(694, 74, 6, 6);
+
+  // Clouds
+  drawCloud(80,  55);
+  drawCloud(310, 35);
+  drawCloud(530, 65);
+
+  // Houses
+  for (const h of VILLAGE_HOUSES) drawHouse(h);
+}
+
+function drawGroundVillage() {
+  // Dirt base
+  ctx.fillStyle = '#8B6914';
+  ctx.fillRect(0, GROUND_TOP, W, H - GROUND_TOP);
+
+  // Cobblestone top layer
+  ctx.fillStyle = '#999999';
+  ctx.fillRect(0, GROUND_TOP, W, 14);
+  const shades = ['#888888', '#919191', '#7A7A7A', '#9A9A9A'];
+  for (let bx = 0; bx < W; bx += 20) {
+    ctx.fillStyle = shades[(bx / 20) % 4];
+    ctx.fillRect(bx, GROUND_TOP, 19, 13);
+    ctx.fillStyle = '#555555';
+    ctx.fillRect(bx, GROUND_TOP,      19, 1);
+    ctx.fillRect(bx, GROUND_TOP,       1, 13);
+    ctx.fillRect(bx, GROUND_TOP + 12, 19, 1);
+  }
+  // Dirt sub-layer blocks
+  ctx.fillStyle = '#7A5810';
+  for (let bx = 10; bx < W; bx += 32) {
+    ctx.fillRect(bx, GROUND_TOP + 14, 2, H - GROUND_TOP - 14);
+  }
+}
+
+function drawPlatformVillage(p) {
+  const platH = 16;
+  // Oak planks
+  ctx.fillStyle = '#C8A060';
+  ctx.fillRect(p.x, p.y, p.w, platH);
+  ctx.fillStyle = '#A07840';
+  ctx.fillRect(p.x, p.y, p.w, 3);
+  ctx.fillStyle = '#785020';
+  for (let bx = p.x; bx < p.x + p.w; bx += 16) {
+    ctx.fillRect(bx, p.y, 1, platH);
+  }
+  ctx.fillStyle = '#D4B070';
+  for (let bx = p.x + 4; bx < p.x + p.w; bx += 16) {
+    ctx.fillRect(bx, p.y + 1, 8, 2);
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
+}
+
 function drawBackground() {
   if (isMine()) { drawBackgroundMine(); return; }
   if (isForest()) { drawBackgroundForest(); return; }
   if (isNether()) { drawBackgroundNether(); return; }
+  if (isVillage()) { drawBackgroundVillage(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
