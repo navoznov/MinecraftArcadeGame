@@ -1340,7 +1340,7 @@ function update() {
       if (player.x + SW - 4 > capLeft && player.x + 4 < capRight) {
         levelComplete = true;
         stopBgMusic();
-        if (level === 5) playPortalEnter(); else playPipeEnter();
+        if (level === 5 || level === 6) playPortalEnter(); else playPipeEnter();
       }
     }
   }
@@ -1499,7 +1499,7 @@ function draw() {
   platforms.forEach(drawPlatform);
   drawGround();
   if (pipeVisible) {
-    if (level === 5) { portalFrame++; drawNetherPortal(PIPE_X, GROUND_TOP); }
+    if (level === 5 || level === 6) { portalFrame++; drawNetherPortal(PIPE_X, GROUND_TOP); }
     else drawPipe(PIPE_X, GROUND_TOP);
   }
   drawWorldItems();
