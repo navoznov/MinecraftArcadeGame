@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.7';
+const VERSION = '1.0.8';
 
 const W = 800;
 const H = 450;
@@ -207,13 +207,16 @@ function genOreBlocks(count, allBlocks) {
 }
 const IRON_ORE_BLOCKS    = [];
 const DIAMOND_ORE_BLOCKS = [];
+const EMERALD_ORE_BLOCKS = [];
 
 function regenerateOreBlocks() {
   const all = [];
   IRON_ORE_BLOCKS.length = 0;
   DIAMOND_ORE_BLOCKS.length = 0;
+  EMERALD_ORE_BLOCKS.length = 0;
   IRON_ORE_BLOCKS.push(...genOreBlocks(6, all));
   DIAMOND_ORE_BLOCKS.push(...genOreBlocks(3, all));
+  EMERALD_ORE_BLOCKS.push(...genOreBlocks(4, all));
 }
 regenerateOreBlocks();
 
@@ -441,6 +444,14 @@ function mineOre() {
     const ore = DIAMOND_ORE_BLOCKS[i];
     if (Math.hypot(ore.x + 10 - px, ore.y + 10 - py) < MINE_REACH) {
       miningAnim = { active: true, timer: 20, maxTimer: 20, ore, oreArr: DIAMOND_ORE_BLOCKS, oreIdx: i, oreType: 'diamond' };
+      playPickaxeHit();
+      return;
+    }
+  }
+  for (let i = 0; i < EMERALD_ORE_BLOCKS.length; i++) {
+    const ore = EMERALD_ORE_BLOCKS[i];
+    if (Math.hypot(ore.x + 10 - px, ore.y + 10 - py) < MINE_REACH) {
+      miningAnim = { active: true, timer: 20, maxTimer: 20, ore, oreArr: EMERALD_ORE_BLOCKS, oreIdx: i, oreType: 'emerald' };
       playPickaxeHit();
       return;
     }
@@ -866,6 +877,22 @@ function drawBackgroundMine() {
     ctx.fillRect(ore.x + 5,  ore.y + 5,  2, 1);
     ctx.fillRect(ore.x + 13, ore.y + 4,  2, 1);
     ctx.fillRect(ore.x + 14, ore.y + 13, 2, 1);
+  }
+
+  for (const ore of EMERALD_ORE_BLOCKS) {
+    ctx.fillStyle = '#485048';
+    ctx.fillRect(ore.x, ore.y, 20, 20);
+    ctx.fillStyle = '#5C6458';
+    ctx.fillRect(ore.x, ore.y, 20, 2);
+    ctx.fillRect(ore.x, ore.y, 2, 20);
+    ctx.fillStyle = '#17DD62';
+    ctx.fillRect(ore.x + 4,  ore.y + 3,  4, 6);
+    ctx.fillRect(ore.x + 12, ore.y + 5,  4, 5);
+    ctx.fillRect(ore.x + 5,  ore.y + 12, 3, 5);
+    ctx.fillRect(ore.x + 13, ore.y + 11, 4, 5);
+    ctx.fillStyle = '#5DFFAA';
+    ctx.fillRect(ore.x + 5,  ore.y + 4,  2, 2);
+    ctx.fillRect(ore.x + 13, ore.y + 6,  2, 1);
   }
 
   for (const t of MINE_TORCHES) {
@@ -1328,6 +1355,22 @@ function drawItemIcon(id, x, y) {
       ctx.fillRect(x + 24, y + 12,  8,  4);
       break;
     }
+    case 'emerald': {
+      ctx.fillStyle = '#17DD62';
+      ctx.fillRect(x + 22, y +  4,   8,  4);
+      ctx.fillRect(x + 18, y +  8,  16,  4);
+      ctx.fillRect(x + 14, y + 12,  24,  4);
+      ctx.fillRect(x + 12, y + 16,  28,  8);
+      ctx.fillRect(x + 14, y + 24,  24,  4);
+      ctx.fillRect(x + 18, y + 28,  16,  4);
+      ctx.fillRect(x + 20, y + 32,  12,  4);
+      ctx.fillRect(x + 22, y + 36,   8,  4);
+      ctx.fillStyle = '#62FFB0';
+      ctx.fillRect(x + 14, y + 16,  10,  4);
+      ctx.fillStyle = '#0A8040';
+      ctx.fillRect(x + 28, y + 16,  10,  4);
+      break;
+    }
   }
 }
 
@@ -1344,6 +1387,10 @@ function drawMiningFx() {
       if (d < MINE_REACH && d < nearestDist) { nearest = ore; nearestDist = d; }
     }
     for (const ore of DIAMOND_ORE_BLOCKS) {
+      const d = Math.hypot(ore.x + 10 - px, ore.y + 10 - py);
+      if (d < MINE_REACH && d < nearestDist) { nearest = ore; nearestDist = d; }
+    }
+    for (const ore of EMERALD_ORE_BLOCKS) {
       const d = Math.hypot(ore.x + 10 - px, ore.y + 10 - py);
       if (d < MINE_REACH && d < nearestDist) { nearest = ore; nearestDist = d; }
     }
