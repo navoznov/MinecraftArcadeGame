@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.14';
+const VERSION = '1.0.15';
 
 const W = 800;
 const H = 450;
@@ -92,6 +92,20 @@ const FOREST_TRUNKS = [
   { x: 338, w: 28 },
   { x: 52,  w: 18 },
   { x: 718, w: 20 },
+];
+
+// Desert sky gradient
+const desertGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
+desertGradient.addColorStop(0,   '#7AB8E8');
+desertGradient.addColorStop(0.6, '#C8D8F0');
+desertGradient.addColorStop(1,   '#E8D8A8');
+
+// Desert background cactus X positions
+const DESERT_CACTI = [
+  { x: 55  },
+  { x: 240 },
+  { x: 475 },
+  { x: 685 },
 ];
 
 // Deterministic coal ore spots
@@ -795,6 +809,7 @@ function drawGround() {
   if (isForest()) { drawGroundForest(); return; }
   if (isNether()) { drawGroundNether(); return; }
   if (isVillage()) { drawGroundVillage(); return; }
+  if (isDesert()) { drawGroundDesert(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -833,11 +848,24 @@ function drawGroundNether() {
   }
 }
 
+function drawGroundDesert() {
+  ctx.fillStyle = '#D4B870';
+  ctx.fillRect(0, GROUND_TOP, W, 12);
+  ctx.fillStyle = '#C49050';
+  ctx.fillRect(0, GROUND_TOP + 12, W, H - GROUND_TOP - 12);
+  ctx.fillStyle = '#B88840';
+  for (let bx = 0; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, 5);
+    ctx.fillRect(bx, GROUND_TOP, 1, 12);
+  }
+}
+
 function drawPlatform(p) {
   if (isMine()) { drawPlatformMine(p); return; }
   if (isForest()) { drawPlatformBranch(p); return; }
   if (isNether()) { drawPlatformNether(p); return; }
   if (isVillage()) { drawPlatformVillage(p); return; }
+  if (isDesert()) { drawPlatformDesert(p); return; }
   const platH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -895,8 +923,12 @@ function drawPlatformNether(p) {
   ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
 }
 
+function isDesert() {
+  return level === 8 || level === 9;
+}
+
 function isNight() {
-  return level % 2 === 0;
+  return level % 2 === 0 && !isDesert();
 }
 
 function isVillage() {
@@ -908,7 +940,7 @@ function isMine() {
 }
 
 function isForest() {
-  return level % 4 === 0;
+  return level % 4 === 0 && !isDesert();
 }
 
 function isNether() {
@@ -1056,6 +1088,24 @@ function drawGroundForest() {
   for (let bx = 12; bx < W; bx += 48) {
     ctx.fillRect(bx, GROUND_TOP + 4, 4, 8);
   }
+}
+
+function drawPlatformDesert(p) {
+  const platH = 24;
+  ctx.fillStyle = '#C4A458';
+  ctx.fillRect(p.x, p.y, p.w, platH);
+  ctx.fillStyle = '#D8BC6C';
+  ctx.fillRect(p.x, p.y, p.w, 8);
+  ctx.fillStyle = '#A88840';
+  for (let by = p.y + 8; by < p.y + platH; by += 8) {
+    ctx.fillRect(p.x, by, p.w, 1);
+  }
+  ctx.fillStyle = '#B89448';
+  for (let bx = p.x; bx < p.x + p.w; bx += 16) {
+    ctx.fillRect(bx, p.y, 2, platH);
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
 }
 
 function drawPlatformBranch(p) {
@@ -1251,11 +1301,81 @@ function drawPlatformVillage(p) {
   ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
 }
 
+function drawCactus(bx) {
+  const u = 8;
+  const tx = bx - Math.round(u / 2);
+  const h  = 60;
+  const armY = 30;
+  const armH = 20;
+  const armW = 18;
+  ctx.fillStyle = '#3A7A20';
+  ctx.fillRect(tx - armW, GROUND_TOP - armY - armH + u, u, armH);
+  ctx.fillRect(tx - armW, GROUND_TOP - armY - armH + u, armW, u);
+  ctx.fillRect(tx + u,    GROUND_TOP - armY - armH + u, u, armH);
+  ctx.fillRect(tx + u,    GROUND_TOP - armY - armH + u, armW, u);
+  ctx.fillRect(tx, GROUND_TOP - h, u, h);
+  ctx.fillStyle = '#2A5A14';
+  ctx.fillRect(tx + 5,          GROUND_TOP - h, 3, h);
+  ctx.fillRect(tx - armW + 5,   GROUND_TOP - armY - armH + u, 3, armH);
+  ctx.fillRect(tx + u + 5,      GROUND_TOP - armY - armH + u, 3, armH);
+}
+
+function drawBackgroundDesert() {
+  ctx.fillStyle = desertGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  // Hot sun (upper right, large with halo)
+  ctx.fillStyle = '#FFEE60';
+  ctx.fillRect(W - 104, 22, 52, 52);
+  ctx.fillStyle = '#FFF8A0';
+  ctx.fillRect(W - 96, 14, 36, 8);
+  ctx.fillRect(W - 96, 74, 36, 8);
+  ctx.fillRect(W - 112, 30, 8, 36);
+  ctx.fillRect(W - 44,  30, 8, 36);
+
+  // Far dunes
+  ctx.fillStyle = '#B89050';
+  const farDunes = [
+    { cx: 90,  w: 220, h: 40 },
+    { cx: 290, w: 180, h: 30 },
+    { cx: 470, w: 250, h: 48 },
+    { cx: 690, w: 200, h: 36 },
+  ];
+  for (const d of farDunes) {
+    for (let s = 0; s < 5; s++) {
+      const t  = (s + 1) / 5;
+      const dw = Math.round(d.w * t);
+      const dy = Math.round(d.h * (1 - t));
+      ctx.fillRect(d.cx - Math.round(dw / 2), GROUND_TOP - d.h + dy, dw, d.h - dy + 2);
+    }
+  }
+
+  // Near dunes (lighter)
+  ctx.fillStyle = '#C8A060';
+  const nearDunes = [
+    { cx: 175, w: 160, h: 28 },
+    { cx: 555, w: 190, h: 36 },
+    { cx: 770, w: 120, h: 22 },
+  ];
+  for (const d of nearDunes) {
+    for (let s = 0; s < 4; s++) {
+      const t  = (s + 1) / 4;
+      const dw = Math.round(d.w * t);
+      const dy = Math.round(d.h * (1 - t));
+      ctx.fillRect(d.cx - Math.round(dw / 2), GROUND_TOP - d.h + dy, dw, d.h - dy + 2);
+    }
+  }
+
+  // Background cacti
+  for (const c of DESERT_CACTI) drawCactus(c.x);
+}
+
 function drawBackground() {
   if (isMine()) { drawBackgroundMine(); return; }
   if (isForest()) { drawBackgroundForest(); return; }
   if (isNether()) { drawBackgroundNether(); return; }
   if (isVillage()) { drawBackgroundVillage(); return; }
+  if (isDesert()) { drawBackgroundDesert(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
