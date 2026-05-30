@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.29';
+const VERSION = '1.0.30';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -17,6 +17,7 @@ const LEVEL_CONFIGS = [
   { theme: 'dark_forest', mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'mansion',    mobType: 'pillager', flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'swamp',      mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'underwater', mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
 ];
 
 function levelCfg() {
@@ -102,6 +103,16 @@ for (let i = 0; i < 55; i++) {
   });
 }
 
+// Deterministic bubble positions for underwater level
+const BUBBLES = [];
+for (let i = 0; i < 35; i++) {
+  BUBBLES.push({
+    x: (i * 271 + 47) % (W - 20) + 10,
+    y: (i * 149 + 29) % (GROUND_TOP - 30) + 10,
+    s: i % 4 === 0 ? 3 : 2,
+  });
+}
+
 // Forest trunk positions (decorative only — no collision)
 const FOREST_TRUNKS = [
   { x: 110, w: 26 },
@@ -158,6 +169,12 @@ const swampGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
 swampGradient.addColorStop(0,   '#040A08');
 swampGradient.addColorStop(0.5, '#081410');
 swampGradient.addColorStop(1,   '#0E1C14');
+
+// Underwater gradient — deep ocean blue-teal
+const underwaterGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
+underwaterGradient.addColorStop(0,   '#04101A');
+underwaterGradient.addColorStop(0.4, '#062234');
+underwaterGradient.addColorStop(1,   '#083A48');
 
 // Desert background cactus X positions
 const DESERT_CACTI = [
@@ -960,6 +977,7 @@ function drawGround() {
   if (isDarkForest()) { drawGroundDarkForest(); return; }
   if (isMansion())    { drawGroundMansion(); return; }
   if (isSwamp())      { drawGroundSwamp(); return; }
+  if (isUnderwater()) { drawGroundUnderwater(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -1033,6 +1051,7 @@ function drawPlatform(p) {
   if (isDarkForest()) { drawPlatformDarkForest(p); return; }
   if (isMansion())    { drawPlatformMansion(p); return; }
   if (isSwamp())      { drawPlatformSwamp(p); return; }
+  if (isUnderwater()) { drawPlatformUnderwater(p); return; }
   const platH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -1096,6 +1115,7 @@ function isOutpost()    { return levelCfg().theme === 'outpost'; }
 function isDarkForest() { return levelCfg().theme === 'dark_forest'; }
 function isMansion()    { return levelCfg().theme === 'mansion'; }
 function isSwamp()      { return levelCfg().theme === 'swamp'; }
+function isUnderwater() { return levelCfg().theme === 'underwater'; }
 function isNight()      { return levelCfg().theme === 'night'; }
 function isVillage() { return levelCfg().hasVillagers; }
 function isMine()    { return levelCfg().theme === 'mine'; }
@@ -1853,6 +1873,159 @@ function drawPlatformDarkForest(p) {
   ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
 }
 
+function fillPrismarineBricks(x, y, w, h) {
+  ctx.fillStyle = '#3A8878';
+  ctx.fillRect(x, y, w, h);
+  // Vertical mortar (alternating row offsets)
+  ctx.fillStyle = '#2A6860';
+  for (let row = 0; row * 12 < h; row++) {
+    const xoff = (row % 2) * 10;
+    for (let tx = x + xoff; tx < x + w; tx += 20) ctx.fillRect(tx, y + row * 12, 2, 12);
+  }
+  // Horizontal mortar drawn on top of verticals
+  for (let ty = y; ty < y + h; ty += 12) ctx.fillRect(x, ty, w, 2);
+  // Aqua highlight per brick
+  ctx.fillStyle = '#50A090';
+  for (let row = 0; row * 12 < h; row++) {
+    const xoff = (row % 2) * 10;
+    for (let tx = x + xoff + 3; tx < x + w - 2; tx += 20) ctx.fillRect(tx, y + row * 12 + 3, 10, 4);
+  }
+}
+
+function drawSeaLantern(cx, cy, r) {
+  ctx.fillStyle = 'rgba(160,230,200,0.35)';
+  ctx.fillRect(cx - r - 3, cy - r - 3, (r + 3) * 2, (r + 3) * 2);
+  ctx.fillStyle = '#90C8B0';
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  ctx.fillStyle = '#C8ECD8';
+  ctx.fillRect(cx - r + 2, cy - r + 2, r * 2 - 4, r * 2 - 4);
+  ctx.fillStyle = '#E8F8F0';
+  ctx.fillRect(cx - 2, cy - 2, 4, 4);
+}
+
+function drawKelp(tx) {
+  const h = 50 + (tx * 7 + 33) % 45;
+  ctx.fillStyle = '#1A6020';
+  ctx.fillRect(tx - 2, GROUND_TOP - h, 5, h);
+  ctx.fillStyle = '#286830';
+  ctx.fillRect(tx - 1, GROUND_TOP - h, 2, h);
+  ctx.fillStyle = '#1E7024';
+  let alt = 0;
+  for (let ky = GROUND_TOP - h + 8; ky < GROUND_TOP - 6; ky += 12) {
+    ctx.fillRect(alt ? tx + 3 : tx - 13, ky, 12, 5);
+    alt = 1 - alt;
+  }
+}
+
+function drawOceanMonument() {
+  const mc = 400;
+
+  // Wings
+  fillPrismarineBricks(118, GROUND_TOP - 72, 152, 72);
+  fillPrismarineBricks(530, GROUND_TOP - 72, 152, 72);
+  ctx.fillStyle = '#1E5048';
+  ctx.fillRect(118, GROUND_TOP - 72, 152, 5);
+  ctx.fillRect(530, GROUND_TOP - 72, 152, 5);
+  drawSeaLantern(194, GROUND_TOP - 76, 7);
+  drawSeaLantern(606, GROUND_TOP - 76, 7);
+
+  // Main body
+  fillPrismarineBricks(270, GROUND_TOP - 162, 260, 162);
+  ctx.fillStyle = '#1E5048';
+  ctx.fillRect(270, GROUND_TOP - 162, 260, 6);
+  ctx.fillRect(270, GROUND_TOP - 162, 8, 162);
+  ctx.fillRect(522, GROUND_TOP - 162, 8, 162);
+  drawSeaLantern(296, GROUND_TOP - 130, 8);
+  drawSeaLantern(504, GROUND_TOP - 130, 8);
+  drawSeaLantern(mc,  GROUND_TOP -  58, 8);
+  // Central entrance
+  ctx.fillStyle = '#061820';
+  ctx.fillRect(mc - 22, GROUND_TOP - 112, 44, 112);
+  ctx.fillStyle = 'rgba(6,40,60,0.6)';
+  ctx.fillRect(mc - 20, GROUND_TOP - 110, 40, 108);
+
+  // Mid step
+  fillPrismarineBricks(304, GROUND_TOP - 207, 192, 45);
+  ctx.fillStyle = '#1E5048';
+  ctx.fillRect(304, GROUND_TOP - 207, 192, 5);
+  ctx.fillRect(304, GROUND_TOP - 207, 6, 45);
+  ctx.fillRect(490, GROUND_TOP - 207, 6, 45);
+  drawSeaLantern(336,  GROUND_TOP - 184, 7);
+  drawSeaLantern(464,  GROUND_TOP - 184, 7);
+  drawSeaLantern(mc,   GROUND_TOP - 184, 7);
+
+  // Upper step
+  fillPrismarineBricks(345, GROUND_TOP - 242, 110, 35);
+  ctx.fillStyle = '#1E5048';
+  ctx.fillRect(345, GROUND_TOP - 242, 110, 5);
+  drawSeaLantern(mc, GROUND_TOP - 224, 6);
+
+  // Spire base
+  ctx.fillStyle = '#2A7068';
+  ctx.fillRect(mc - 22, GROUND_TOP - 272, 44, 30);
+  ctx.fillStyle = '#1E5048';
+  ctx.fillRect(mc - 22, GROUND_TOP - 272, 44, 4);
+  // Spire tip
+  ctx.fillStyle = '#3A8878';
+  ctx.fillRect(mc - 10, GROUND_TOP - 292, 20, 24);
+  ctx.fillStyle = '#1E5048';
+  ctx.fillRect(mc - 10, GROUND_TOP - 292, 20, 4);
+  // Beacon lantern at very top
+  drawSeaLantern(mc, GROUND_TOP - 300, 9);
+}
+
+function drawBackgroundUnderwater() {
+  ctx.fillStyle = underwaterGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  // Light rays filtering from above
+  ctx.fillStyle = 'rgba(60,160,180,0.05)';
+  ctx.fillRect(168, 0, 42, GROUND_TOP);
+  ctx.fillRect(355, 0, 30, GROUND_TOP);
+  ctx.fillRect(558, 0, 36, GROUND_TOP);
+  ctx.fillRect(700, 0, 24, GROUND_TOP);
+
+  // Background kelp
+  for (const kx of [28, 88, 208, 310, 482, 598, 708, 768]) drawKelp(kx);
+
+  // Bubbles
+  ctx.fillStyle = 'rgba(160,220,240,0.55)';
+  for (const b of BUBBLES) ctx.fillRect(b.x, b.y, b.s, b.s);
+
+  // Ocean monument
+  drawOceanMonument();
+}
+
+function drawGroundUnderwater() {
+  // Sandy ocean floor with stone/prismarine patches
+  ctx.fillStyle = '#4A5840';
+  ctx.fillRect(0, GROUND_TOP, W, 12);
+  ctx.fillStyle = '#383C2C';
+  ctx.fillRect(0, GROUND_TOP + 12, W, H - GROUND_TOP - 12);
+  ctx.fillStyle = '#565C48';
+  for (let bx = 0; bx < W; bx += BLOCK) ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, 5);
+  // Prismarine patches near monument base
+  ctx.fillStyle = '#2A6860';
+  for (let bx = 20; bx < W; bx += 60) ctx.fillRect(bx, GROUND_TOP + 4, 22, 6);
+}
+
+function drawPlatformUnderwater(p) {
+  const platH = 20;
+  // Prismarine bricks
+  ctx.fillStyle = '#3A8878';
+  ctx.fillRect(p.x, p.y, p.w, platH);
+  ctx.fillStyle = '#2A6860';
+  for (let ty = p.y; ty < p.y + platH; ty += 10) ctx.fillRect(p.x, ty, p.w, 2);
+  for (let row = 0; row * 10 < platH; row++) {
+    const xoff = (row % 2) * 10;
+    for (let bx = p.x + xoff; bx < p.x + p.w; bx += 20) ctx.fillRect(bx, p.y + row * 10, 2, 10);
+  }
+  ctx.fillStyle = '#50A090';
+  ctx.fillRect(p.x, p.y, p.w, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 3);
+}
+
 function drawSwampOak(tx, trunkH) {
   const cy = GROUND_TOP - trunkH;
   const cw = 86;
@@ -2187,6 +2360,7 @@ function drawBackground() {
   if (isDarkForest()) { drawBackgroundDarkForest(); return; }
   if (isMansion())    { drawBackgroundMansion(); return; }
   if (isSwamp())      { drawBackgroundSwamp(); return; }
+  if (isUnderwater()) { drawBackgroundUnderwater(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
