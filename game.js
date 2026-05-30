@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.12';
+const VERSION = '1.0.13';
 
 const W = 800;
 const H = 450;
@@ -166,6 +166,7 @@ let worldItems = [];
 
 let emeraldCount = 0;
 let tradeOpen    = false;
+let tradePartner = null;   // 'farmer' | 'blacksmith'
 let helpOpen     = false;
 
 // ── Trade panel ───────────────────────────────────────────────
@@ -176,7 +177,9 @@ const TRADE_PY   = (H - TRADE_PH) >> 1;   // 70
 const TRADE_HALF = TRADE_PW >> 1;          // 280
 const TSLOT      = 40;
 const TGAP       = 3;
-const FARMER_SHOP = [{ id: 'apple', price: 3 }];
+const FARMER_SHOP     = [{ id: 'apple',   price: 3 }];
+const BLACKSMITH_SHOP = [{ id: 'sword',   price: 7 },
+                         { id: 'pickaxe', price: 5 }];
 
 const player = {
   x: W / 2 - 20,
@@ -272,6 +275,7 @@ function resetGame() {
   paused = false;
   inventoryOpen = false;
   tradeOpen     = false;
+  tradePartner  = null;
   helpOpen      = false;
   emeraldCount  = 0;
   inventory = ['apple', null, null, null, null, null, null, null, null];
@@ -308,13 +312,13 @@ document.addEventListener('keydown', e => {
   }
 
   if (!gameOver && !levelComplete && e.code === 'KeyQ') {
-    if (tradeOpen) { tradeOpen = false; } else { inventoryOpen = !inventoryOpen; }
+    if (tradeOpen) { tradeOpen = false; tradePartner = null; } else { inventoryOpen = !inventoryOpen; }
     return;
   }
 
   if (!gameOver && !levelComplete && !paused && e.code === 'KeyR') {
-    if (tradeOpen) { tradeOpen = false; }
-    else if (findNearbyFarmer()) { inventoryOpen = false; tradeOpen = true; }
+    if (tradeOpen) { tradeOpen = false; tradePartner = null; }
+    else { const t = findNearbyTrader(); if (t) { inventoryOpen = false; tradePartner = t.type; tradeOpen = true; } }
     return;
   }
 
@@ -382,7 +386,8 @@ canvas.addEventListener('click', e => {
           const idx = row * 3 + col;
           const it  = inventory[idx];
           if (it) {
-            const si = FARMER_SHOP.find(s => s.id === it);
+            const shop = tradePartner === 'blacksmith' ? BLACKSMITH_SHOP : FARMER_SHOP;
+            const si = shop.find(s => s.id === it);
             if (si) {
               inventory[idx] = null;
               const emSlot = inventory.indexOf('emerald');
@@ -397,7 +402,8 @@ canvas.addEventListener('click', e => {
     // Right panel: buy item from farmer
     const shopX2 = TRADE_PX + TRADE_HALF + 14;
     let shopY2 = TRADE_PY + 32;
-    for (const si of FARMER_SHOP) {
+    const currentShop2 = tradePartner === 'blacksmith' ? BLACKSMITH_SHOP : FARMER_SHOP;
+    for (const si of currentShop2) {
       if (cx >= shopX2 && cx < TRADE_PX + TRADE_PW - 8 && cy >= shopY2 && cy < shopY2 + TSLOT) {
         if (emeraldCount >= si.price) {
           const slot = inventory.indexOf(null);
@@ -409,7 +415,7 @@ canvas.addEventListener('click', e => {
     }
     // Click outside panel closes it
     if (cx < TRADE_PX || cx >= TRADE_PX + TRADE_PW || cy < TRADE_PY || cy >= TRADE_PY + TRADE_PH) {
-      tradeOpen = false;
+      tradeOpen = false; tradePartner = null;
     }
     return;
   }
@@ -719,10 +725,10 @@ function syncEmeraldSlot() {
   }
 }
 
-function findNearbyFarmer() {
+function findNearbyTrader() {
   if (!isVillage()) return null;
   for (const v of villagers) {
-    if (v.type !== 'farmer') continue;
+    if (v.type !== 'farmer' && v.type !== 'blacksmith') continue;
     if (Math.abs((v.x + SW / 2) - (player.x + SW / 2)) < 80) return v;
   }
   return null;
@@ -734,7 +740,7 @@ function drawVillagers() {
     drawVillager(v.x, GROUND_TOP - SH, v.facingRight, v.walkFrame, v.type);
   }
   if (!tradeOpen && !inventoryOpen) {
-    const f = findNearbyFarmer();
+    const f = findNearbyTrader();
     if (f) {
       ctx.fillStyle = 'rgba(0,0,0,0.55)';
       ctx.fillRect(f.x - 2, GROUND_TOP - SH - 20, 50, 14);
@@ -1741,7 +1747,8 @@ function drawTradePanel() {
       drawTSlot(sx, sy, inventory[row * 3 + col]);
       // Green tint on sellable items
       const it = inventory[row * 3 + col];
-      if (it && FARMER_SHOP.find(s => s.id === it)) {
+      const panelShop = tradePartner === 'blacksmith' ? BLACKSMITH_SHOP : FARMER_SHOP;
+      if (it && panelShop.find(s => s.id === it)) {
         ctx.save();
         ctx.globalAlpha = 0.22;
         ctx.fillStyle = '#00FF00';
@@ -1775,15 +1782,18 @@ function drawTradePanel() {
   ctx.fillStyle = '#3F3F3F';
   ctx.font = 'bold 13px monospace';
   ctx.textAlign = 'center';
-  ctx.fillText('Фермер', midX + TRADE_HALF / 2, py + 22);
+  const traderName = tradePartner === 'blacksmith' ? 'Кузнец' : 'Фермер';
+  ctx.fillText(traderName, midX + TRADE_HALF / 2, py + 22);
 
   const shopX = midX + 14;
   let shopY = py + 32;
+  const activeShop = tradePartner === 'blacksmith' ? BLACKSMITH_SHOP : FARMER_SHOP;
+  const itemNames  = { apple: 'Яблоко', sword: 'Меч', pickaxe: 'Кирка' };
 
-  for (const si of FARMER_SHOP) {
+  for (const si of activeShop) {
     drawTSlot(shopX, shopY, si.id);
 
-    const name = si.id === 'apple' ? 'Яблоко' : si.id;
+    const name = itemNames[si.id] || si.id;
     ctx.fillStyle = '#3F3F3F';
     ctx.font = '13px monospace';
     ctx.textAlign = 'left';
@@ -2079,8 +2089,9 @@ function nextLevel() {
   if (isVillage()) initVillagers();
   phantoms = [];
   phantomTimer = Math.floor(spawnInterval / 2);
-  paused    = false;
-  tradeOpen = false;
+  paused       = false;
+  tradeOpen    = false;
+  tradePartner = null;
   joyRays = [];
   swordSwing = { active: false, timer: 0 };
   useCooldown = 0;
