@@ -38,9 +38,9 @@ The project is split into four files — no build tooling, no dependencies:
 |------|----------|
 | `index.html` | HTML skeleton, `<link>` to CSS, three `<script src>` tags |
 | `style.css` | Page and canvas styles |
-| `sprites.js` | Sprite pixel-art arrays (`STEVE`, `ZOMBIE`, `PHANTOM`), palettes, dimensions (`CELL`, `SW`, `SH`, `PW`, `PH`), and the `drawSprite()` utility |
+| `sprites.js` | Sprite pixel-art arrays (`STEVE`, `ZOMBIE`, `SKELETON`, `HUSK`, `PHANTOM`, `VILLAGER`, `FARMER`, `BLACKSMITH`), palettes, dimensions (`CELL`, `SW`, `SH`, `PW`, `PH`), and the `drawSprite()` utility |
 | `audio.js` | `audioCtx`, all `play*()` sound functions, `MARIO_MELODY` data, background-music state and `startBgMusic`/`stopBgMusic` |
-| `game.js` | Everything else: canvas/constants, game state, physics, all `draw*()` and `update()` functions, input handling, game loop |
+| `game.js` | Everything else: canvas/constants, `LEVEL_CONFIGS`, game state, physics, all `draw*()` and `update()` functions, input handling, game loop |
 
 All variables are global — scripts share scope via plain `<script src>` tags loaded in order: `sprites.js` → `audio.js` → `game.js`.
 
@@ -65,6 +65,26 @@ Pixel art defined as a 2D array `STEVE` (8 columns × 18 rows), indexed into `PA
 - Gravity accumulates into `player.vy` each frame.
 - Platform collision checks only downward landings (`player.vy >= 0`) using `prevY` (before gravity applied) vs. `player.y` (after), with a 4 px horizontal inset on each platform edge.
 - Ground collision is a simple floor clamp.
+
+### Level System
+
+9 levels cycle through 7 biome themes: `day`, `night`, `mine`, `forest`, `nether`, `village`, `desert`.
+
+Each level is described by one entry in `LEVEL_CONFIGS` (top of `game.js`):
+
+| Field | Values |
+|---|---|
+| `theme` | `'day'` \| `'night'` \| `'mine'` \| `'forest'` \| `'nether'` \| `'village'` \| `'desert'` |
+| `mobType` | `'zombie'` \| `'skeleton'` \| `'husk'` \| `null` (village — no enemies) |
+| `flyingMobType` | `'phantom'` \| `null` |
+| `hasVillagers` | `boolean` |
+| `portal` | `'pipe'` \| `'portal'` |
+| `startItem` | `'sword'` \| `'pickaxe'` \| `null` |
+| `hasOres` | `boolean` |
+
+`levelCfg()` returns `LEVEL_CONFIGS[(level - 1) % LEVEL_CONFIGS.length]`.
+
+Six predicate helpers (`isDesert`, `isNight`, `isVillage`, `isMine`, `isForest`, `isNether`) are thin wrappers over `levelCfg()` and used throughout draw/update functions. **To add a new level: append one object to `LEVEL_CONFIGS`.**
 
 ### Audio
 
