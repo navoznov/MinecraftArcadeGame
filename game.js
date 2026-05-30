@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.28';
+const VERSION = '1.0.29';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -16,6 +16,7 @@ const LEVEL_CONFIGS = [
   { theme: 'outpost',     mobType: 'pillager', flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'dark_forest', mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'mansion',    mobType: 'pillager', flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'swamp',      mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
 ];
 
 function levelCfg() {
@@ -151,6 +152,12 @@ const mansionGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
 mansionGradient.addColorStop(0,   '#040408');
 mansionGradient.addColorStop(0.5, '#060812');
 mansionGradient.addColorStop(1,   '#0A0C18');
+
+// Swamp sky gradient — murky dark teal-green foggy night
+const swampGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
+swampGradient.addColorStop(0,   '#040A08');
+swampGradient.addColorStop(0.5, '#081410');
+swampGradient.addColorStop(1,   '#0E1C14');
 
 // Desert background cactus X positions
 const DESERT_CACTI = [
@@ -952,6 +959,7 @@ function drawGround() {
   if (isOutpost())    { drawGroundOutpost(); return; }
   if (isDarkForest()) { drawGroundDarkForest(); return; }
   if (isMansion())    { drawGroundMansion(); return; }
+  if (isSwamp())      { drawGroundSwamp(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -1024,6 +1032,7 @@ function drawPlatform(p) {
   if (isOutpost())    { drawPlatformOutpost(p); return; }
   if (isDarkForest()) { drawPlatformDarkForest(p); return; }
   if (isMansion())    { drawPlatformMansion(p); return; }
+  if (isSwamp())      { drawPlatformSwamp(p); return; }
   const platH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -1086,6 +1095,7 @@ function isPyramid() { return levelCfg().theme === 'pyramid'; }
 function isOutpost()    { return levelCfg().theme === 'outpost'; }
 function isDarkForest() { return levelCfg().theme === 'dark_forest'; }
 function isMansion()    { return levelCfg().theme === 'mansion'; }
+function isSwamp()      { return levelCfg().theme === 'swamp'; }
 function isNight()      { return levelCfg().theme === 'night'; }
 function isVillage() { return levelCfg().hasVillagers; }
 function isMine()    { return levelCfg().theme === 'mine'; }
@@ -1843,6 +1853,125 @@ function drawPlatformDarkForest(p) {
   ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
 }
 
+function drawSwampOak(tx, trunkH) {
+  const cy = GROUND_TOP - trunkH;
+  const cw = 86;
+  // Trunk — thick, dark brown
+  ctx.fillStyle = '#2C1E0C';
+  ctx.fillRect(tx - 7, cy, 14, trunkH);
+  ctx.fillStyle = '#3C2A12';
+  ctx.fillRect(tx - 5, cy, 6, trunkH);
+  ctx.fillStyle = '#1E1408';
+  ctx.fillRect(tx + 5, cy, 2, trunkH);
+  // Wide flat canopy (3 layers)
+  ctx.fillStyle = '#162408';
+  ctx.fillRect(tx - cw,      cy - 38, cw * 2, 48);
+  ctx.fillRect(tx - cw + 14, cy - 58, cw * 2 - 28, 24);
+  ctx.fillRect(tx - cw + 28, cy - 70, cw * 2 - 56, 16);
+  // Drooping canopy edges
+  ctx.fillRect(tx - cw,      cy + 6, 26, 14);
+  ctx.fillRect(tx + cw - 26, cy + 6, 26, 14);
+  ctx.fillRect(tx - 14,      cy + 8, 28, 12);
+  // Dark inner shade
+  ctx.fillStyle = '#0E1804';
+  ctx.fillRect(tx - cw + 10, cy - 26, cw * 2 - 20, 12);
+  // Hanging vines
+  ctx.fillStyle = '#1C3010';
+  for (let vi = -cw + 14; vi < cw - 10; vi += 14) {
+    const vl = 16 + (Math.abs(vi * 7 + 19) % 24);
+    ctx.fillRect(tx + vi, cy + 18, 3, vl);
+    ctx.fillStyle = '#142408';
+    ctx.fillRect(tx + vi + 1, cy + 18, 1, vl);
+    ctx.fillStyle = '#1C3010';
+  }
+}
+
+function drawBackgroundSwamp() {
+  ctx.fillStyle = swampGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  // A few dim stars at very top
+  ctx.fillStyle = '#8AA080';
+  for (const s of STARS) {
+    if (s.y > 100) continue;
+    ctx.fillRect(s.x, s.y, s.s, s.s);
+  }
+
+  // Fog wisps layered from top
+  ctx.fillStyle = 'rgba(20,40,28,0.22)';
+  ctx.fillRect(0, GROUND_TOP - 300, W, 120);
+  ctx.fillStyle = 'rgba(16,36,24,0.30)';
+  ctx.fillRect(0, GROUND_TOP - 200, W, 130);
+
+  // Murky swamp water — dark green-brown pool behind trees
+  ctx.fillStyle = '#0C1A0E';
+  ctx.fillRect(0, GROUND_TOP - 110, W, 110);
+  ctx.fillStyle = '#081408';
+  ctx.fillRect(0, GROUND_TOP - 90, W, 90);
+  // Water surface shimmer
+  ctx.fillStyle = '#163020';
+  for (let wx = 10; wx < W; wx += 28) {
+    ctx.fillRect(wx,      GROUND_TOP - 108, 18, 3);
+    ctx.fillRect(wx + 10, GROUND_TOP - 98,  14, 2);
+  }
+
+  // Lily pads
+  ctx.fillStyle = '#284818';
+  for (const lx of [48, 140, 234, 350, 455, 555, 658, 744]) {
+    ctx.fillRect(lx,     GROUND_TOP - 98, 24, 8);
+    ctx.fillRect(lx + 6, GROUND_TOP - 104, 12, 7);
+  }
+  // Small red flowers on two lily pads
+  ctx.fillStyle = '#882020';
+  ctx.fillRect(144, GROUND_TOP - 108, 4, 4);
+  ctx.fillRect(458, GROUND_TOP - 108, 4, 4);
+
+  // Distant center tree
+  ctx.fillStyle = '#101C06';
+  ctx.fillRect(388, GROUND_TOP - 112, 8, 112);
+  ctx.fillRect(328, GROUND_TOP - 136, 120, 32);
+  ctx.fillRect(344, GROUND_TOP - 158, 88,  26);
+
+  // Four flanking gnarled oaks
+  drawSwampOak(65,  144);
+  drawSwampOak(186, 158);
+  drawSwampOak(592, 152);
+  drawSwampOak(720, 140);
+}
+
+function drawGroundSwamp() {
+  // Muddy dark mossy green surface
+  ctx.fillStyle = '#1E2C12';
+  ctx.fillRect(0, GROUND_TOP, W, 12);
+  ctx.fillStyle = '#141E0C';
+  ctx.fillRect(0, GROUND_TOP + 12, W, H - GROUND_TOP - 12);
+  ctx.fillStyle = '#263818';
+  for (let bx = 0; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, 5);
+  }
+  // Dark mud patches
+  ctx.fillStyle = '#181408';
+  for (let bx = 14; bx < W; bx += 52) ctx.fillRect(bx, GROUND_TOP + 4, 18, 6);
+  ctx.fillStyle = '#100E06';
+  for (let bx = 32; bx < W; bx += 48) ctx.fillRect(bx, GROUND_TOP + 8, 12, 4);
+}
+
+function drawPlatformSwamp(p) {
+  const platH = 22;
+  // Gnarled dark oak — dark reddish-brown
+  ctx.fillStyle = '#3A2210';
+  ctx.fillRect(p.x, p.y, p.w, platH);
+  ctx.fillStyle = '#4A2E16';
+  ctx.fillRect(p.x, p.y, p.w, 5);
+  ctx.fillStyle = '#2A1808';
+  for (let bx = p.x; bx < p.x + p.w; bx += 14) ctx.fillRect(bx, p.y, 2, platH);
+  ctx.fillStyle = '#563A1E';
+  for (let bx = p.x + 3; bx < p.x + p.w; bx += 14) ctx.fillRect(bx, p.y + 1, 8, 2);
+  // Hanging moss at bottom
+  ctx.fillStyle = '#1E3012';
+  for (let bx = p.x + 4; bx < p.x + p.w; bx += 10) ctx.fillRect(bx, p.y + platH, 3, 5);
+}
+
 function drawMansionWindow(wx, wy) {
   const ww = 22, wh = 26;
   ctx.fillStyle = 'rgba(255,150,30,0.25)';
@@ -2057,6 +2186,7 @@ function drawBackground() {
   if (isOutpost())    { drawBackgroundOutpost(); return; }
   if (isDarkForest()) { drawBackgroundDarkForest(); return; }
   if (isMansion())    { drawBackgroundMansion(); return; }
+  if (isSwamp())      { drawBackgroundSwamp(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
