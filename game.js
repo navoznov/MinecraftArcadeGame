@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.26';
+const VERSION = '1.0.27';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -13,7 +13,8 @@ const LEVEL_CONFIGS = [
   { theme: 'village', mobType: null,       flyingMobType: null,      hasVillagers: true,  portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'desert',  mobType: 'husk',     flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'pyramid', mobType: 'husk',     flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
-  { theme: 'outpost', mobType: 'pillager', flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'outpost',     mobType: 'pillager', flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'dark_forest', mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
 ];
 
 function levelCfg() {
@@ -111,6 +112,15 @@ const FOREST_TRUNKS = [
   { x: 718, w: 20 },
 ];
 
+// Dark forest: fewer, much thicker dark oak trunks
+const DARK_FOREST_TRUNKS = [
+  { x:  28, w: 28 },
+  { x: 190, w: 26 },
+  { x: 380, w: 30 },
+  { x: 555, w: 26 },
+  { x: 718, w: 24 },
+];
+
 // Desert sky gradient
 const desertGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
 desertGradient.addColorStop(0,   '#7AB8E8');
@@ -128,6 +138,12 @@ const outpostGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
 outpostGradient.addColorStop(0,   '#2A3848');
 outpostGradient.addColorStop(0.5, '#48586A');
 outpostGradient.addColorStop(1,   '#607080');
+
+// Dark forest sky gradient — almost black, slight green tint
+const darkForestGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
+darkForestGradient.addColorStop(0,   '#020404');
+darkForestGradient.addColorStop(0.6, '#060C08');
+darkForestGradient.addColorStop(1,   '#0C1610');
 
 // Desert background cactus X positions
 const DESERT_CACTI = [
@@ -925,8 +941,9 @@ function drawGround() {
   if (isNether()) { drawGroundNether(); return; }
   if (isVillage()) { drawGroundVillage(); return; }
   if (isDesert()) { drawGroundDesert(); return; }
-  if (isPyramid()) { drawGroundPyramid(); return; }
-  if (isOutpost()) { drawGroundOutpost(); return; }
+  if (isPyramid())    { drawGroundPyramid(); return; }
+  if (isOutpost())    { drawGroundOutpost(); return; }
+  if (isDarkForest()) { drawGroundDarkForest(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -995,8 +1012,9 @@ function drawPlatform(p) {
   if (isNether()) { drawPlatformNether(p); return; }
   if (isVillage()) { drawPlatformVillage(p); return; }
   if (isDesert()) { drawPlatformDesert(p); return; }
-  if (isPyramid()) { drawPlatformPyramid(p); return; }
-  if (isOutpost()) { drawPlatformOutpost(p); return; }
+  if (isPyramid())    { drawPlatformPyramid(p); return; }
+  if (isOutpost())    { drawPlatformOutpost(p); return; }
+  if (isDarkForest()) { drawPlatformDarkForest(p); return; }
   const platH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -1056,8 +1074,9 @@ function drawPlatformNether(p) {
 
 function isDesert()  { return levelCfg().theme === 'desert'; }
 function isPyramid() { return levelCfg().theme === 'pyramid'; }
-function isOutpost() { return levelCfg().theme === 'outpost'; }
-function isNight()   { return levelCfg().theme === 'night'; }
+function isOutpost()    { return levelCfg().theme === 'outpost'; }
+function isDarkForest() { return levelCfg().theme === 'dark_forest'; }
+function isNight()      { return levelCfg().theme === 'night'; }
 function isVillage() { return levelCfg().hasVillagers; }
 function isMine()    { return levelCfg().theme === 'mine'; }
 function isForest()  { return levelCfg().theme === 'forest'; }
@@ -1693,14 +1712,136 @@ function drawPlatformOutpost(p) {
   ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
 }
 
+function drawBackgroundDarkForest() {
+  ctx.fillStyle = darkForestGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  // A handful of stars in the gaps between canopy
+  ctx.fillStyle = '#FFFFFF';
+  for (const s of STARS) {
+    if (s.x > 155 && s.x < 195) continue;
+    if (s.x > 340 && s.x < 385) continue;
+    if (s.x > 530 && s.x < 560) continue;
+    if (s.y > 120) continue;
+    ctx.fillRect(s.x, s.y, s.s, s.s);
+  }
+
+  // Dim pale moon (partially obscured by canopy overhang)
+  ctx.fillStyle = '#8A8870';
+  ctx.fillRect(340, 18, 26, 26);
+  ctx.fillStyle = '#6A6854';
+  ctx.fillRect(346, 22, 8, 8);
+  ctx.fillRect(338, 28, 6, 6);
+  // Canopy overlap hiding lower half of moon
+  ctx.fillStyle = '#060C04';
+  ctx.fillRect(330, 34, 46, 12);
+
+  // Background canopy silhouettes — massive dark oak crown shapes
+  ctx.fillStyle = '#040A02';
+  // Left-centre gap filler
+  ctx.fillRect(110,  0, 130, 100);
+  ctx.fillRect(118, 95, 114,  35);
+  // Centre gap filler
+  ctx.fillRect(305,  0, 140,  95);
+  ctx.fillRect(315, 90, 120,  30);
+  // Right-centre gap filler
+  ctx.fillRect(480,  0, 130,  90);
+  ctx.fillRect(490, 85, 110,  28);
+
+  // Large brown mushroom (left mid-ground)
+  ctx.fillStyle = '#3A1E0C';
+  ctx.fillRect(244, GROUND_TOP - 68, 10, 68); // stem
+  ctx.fillStyle = '#6B3010';
+  ctx.fillRect(218, GROUND_TOP - 86, 62, 22); // cap bottom
+  ctx.fillRect(226, GROUND_TOP - 104, 46, 20); // cap mid
+  ctx.fillRect(234, GROUND_TOP - 116, 30, 14); // cap top
+  ctx.fillStyle = '#B07850';
+  ctx.fillRect(222, GROUND_TOP - 86, 8, 7);   // spore dots
+  ctx.fillRect(238, GROUND_TOP - 90, 7, 7);
+  ctx.fillRect(255, GROUND_TOP - 86, 8, 7);
+  ctx.fillRect(266, GROUND_TOP - 86, 8, 7);
+
+  // Smaller red mushroom (right mid-ground)
+  ctx.fillStyle = '#3A1A0A';
+  ctx.fillRect(520, GROUND_TOP - 48, 8, 48); // stem
+  ctx.fillStyle = '#8A1A10';
+  ctx.fillRect(500, GROUND_TOP - 64, 48, 18); // cap
+  ctx.fillRect(508, GROUND_TOP - 76, 32, 14); // cap upper
+  ctx.fillStyle = '#E8D8A0';
+  ctx.fillRect(504, GROUND_TOP - 64, 6, 6);
+  ctx.fillRect(519, GROUND_TOP - 68, 5, 5);
+  ctx.fillRect(534, GROUND_TOP - 64, 6, 6);
+}
+
+function drawDarkForestTrees() {
+  for (const t of DARK_FOREST_TRUNKS) {
+    const cx = t.x + Math.floor(t.w / 2);
+
+    // Massive canopy block at the top (covers ~top 35% of sky)
+    ctx.fillStyle = '#060E04';
+    ctx.fillRect(cx - 78, 0,   156, 100); // main canopy mass
+    ctx.fillRect(cx - 60, 95,  120,  32); // lower canopy fringe
+    ctx.fillRect(cx - 42, 122,  84,  18); // narrower base fringe
+    ctx.fillStyle = '#040A02';
+    ctx.fillRect(cx - 60, 0,   120,  50); // denser upper core
+
+    // Thick trunk from canopy base to ground
+    ctx.fillStyle = '#120A02';
+    ctx.fillRect(t.x, 0, t.w, GROUND_TOP);
+    ctx.fillStyle = '#201408';
+    ctx.fillRect(t.x + 3, 0, Math.floor(t.w * 0.28), GROUND_TOP);
+    ctx.fillStyle = '#0A0602';
+    for (let ty = 24; ty < GROUND_TOP; ty += 26) {
+      ctx.fillRect(t.x, ty, t.w, 2);
+    }
+    ctx.fillRect(t.x + t.w - 3, 0, 3, GROUND_TOP);
+  }
+}
+
+function drawGroundDarkForest() {
+  // Dark podzol — brown-gray surface
+  ctx.fillStyle = '#2A1A0C';
+  ctx.fillRect(0, GROUND_TOP, W, 12);
+  ctx.fillStyle = '#1A100A';
+  ctx.fillRect(0, GROUND_TOP + 12, W, H - GROUND_TOP - 12);
+  ctx.fillStyle = '#341E10';
+  for (let bx = 0; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, 4);
+  }
+  ctx.fillStyle = '#1E1208';
+  for (let bx = 8; bx < W; bx += 40) {
+    ctx.fillRect(bx, GROUND_TOP + 4, 6, 8);
+  }
+}
+
+function drawPlatformDarkForest(p) {
+  const platH = 24;
+  // Dark oak planks — very dark brown
+  ctx.fillStyle = '#2C1A0A';
+  ctx.fillRect(p.x, p.y, p.w, platH);
+  ctx.fillStyle = '#3C2214';
+  ctx.fillRect(p.x, p.y, p.w, 7);
+  ctx.fillStyle = '#1A1006';
+  for (let bx = p.x; bx < p.x + p.w; bx += 16) {
+    ctx.fillRect(bx, p.y, 2, platH);
+  }
+  ctx.fillStyle = '#4A2C18';
+  for (let bx = p.x + 3; bx < p.x + p.w; bx += 16) {
+    ctx.fillRect(bx, p.y + 1, 10, 2);
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
+}
+
 function drawBackground() {
   if (isMine()) { drawBackgroundMine(); return; }
   if (isForest()) { drawBackgroundForest(); return; }
   if (isNether()) { drawBackgroundNether(); return; }
   if (isVillage()) { drawBackgroundVillage(); return; }
   if (isDesert()) { drawBackgroundDesert(); return; }
-  if (isPyramid()) { drawBackgroundPyramid(); return; }
-  if (isOutpost()) { drawBackgroundOutpost(); return; }
+  if (isPyramid())    { drawBackgroundPyramid(); return; }
+  if (isOutpost())    { drawBackgroundOutpost(); return; }
+  if (isDarkForest()) { drawBackgroundDarkForest(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
@@ -2596,7 +2737,8 @@ function draw() {
   ctx.clearRect(0, 0, W, H);
   drawBackground();
   drawMiningFx();
-  if (isForest()) drawForestTrees();
+  if (isForest())     drawForestTrees();
+  if (isDarkForest()) drawDarkForestTrees();
   platforms.forEach(drawPlatform);
   drawGround();
   if (pipeVisible) {
