@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.10';
+const VERSION = '1.0.11';
 
 const W = 800;
 const H = 450;
@@ -166,6 +166,7 @@ let worldItems = [];
 
 let emeraldCount = 0;
 let tradeOpen    = false;
+let helpOpen     = false;
 
 // ── Trade panel ───────────────────────────────────────────────
 const TRADE_PW   = 560;
@@ -271,6 +272,7 @@ function resetGame() {
   paused = false;
   inventoryOpen = false;
   tradeOpen     = false;
+  helpOpen      = false;
   emeraldCount  = 0;
   inventory = ['apple', null, null, null, null, null, null, null, null];
   handSlot = null;
@@ -316,7 +318,9 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  if (inventoryOpen || tradeOpen) return;
+  if (e.code === 'KeyH') { helpOpen = !helpOpen; return; }
+
+  if (inventoryOpen || tradeOpen || helpOpen) return;
 
   if (paused && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'Space')) {
     paused = false;
@@ -1379,6 +1383,12 @@ function drawHUD() {
   }
 
   ctx.font = '10px monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.textAlign = 'center';
+  ctx.fillText('H — помощь', W / 2, H - 5);
+  ctx.textAlign = 'left';
+
+  ctx.font = '10px monospace';
   ctx.fillStyle = 'rgba(255,255,255,0.45)';
   ctx.textAlign = 'right';
   ctx.fillText(`v${VERSION}`, W - 6, H - 5);
@@ -1602,6 +1612,66 @@ function drawSlot(sx, sy, item) {
       ctx.textAlign = 'left';
     }
   }
+}
+
+function drawHelp() {
+  const pw = 380, ph = 292;
+  const px = (W - pw) >> 1;
+  const py = (H - ph) >> 1;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = '#C6C6C6';
+  ctx.fillRect(px, py, pw, ph);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(px, py, pw, 2);
+  ctx.fillRect(px, py, 2, ph);
+  ctx.fillStyle = '#555555';
+  ctx.fillRect(px, py + ph - 2, pw, 2);
+  ctx.fillRect(px + pw - 2, py, 2, ph);
+
+  ctx.fillStyle = '#3F3F3F';
+  ctx.font = 'bold 15px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Управление', px + pw / 2, py + 24);
+
+  const sep = py + 32;
+  ctx.fillStyle = '#888888';
+  ctx.fillRect(px + 10, sep, pw - 20, 1);
+
+  const rows = [
+    ['← →',        'Движение'],
+    ['Пробел',      'Прыжок'],
+    ['E',           'Использовать предмет'],
+    ['Q',           'Инвентарь'],
+    ['R',           'Торговля (рядом с фермером)'],
+    ['P',           'Пауза'],
+    ['M',           'Звук вкл / выкл'],
+    ['H',           'Эта подсказка'],
+  ];
+
+  const colKey = px + 24;
+  const colVal = px + 130;
+  let ry = sep + 22;
+  const step = 26;
+
+  for (const [key, desc] of rows) {
+    ctx.fillStyle = '#FFD700';
+    ctx.font = 'bold 13px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(key, colKey, ry);
+    ctx.fillStyle = '#3F3F3F';
+    ctx.font = '13px monospace';
+    ctx.fillText(desc, colVal, ry);
+    ry += step;
+  }
+
+  ctx.fillStyle = '#6A6A6A';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('H — закрыть', px + pw / 2, py + ph - 10);
+  ctx.textAlign = 'left';
 }
 
 function drawTSlot(sx, sy, item) {
@@ -2072,10 +2142,11 @@ function draw() {
   if (paused)         drawPaused();
   if (tradeOpen)      drawTradePanel();
   if (inventoryOpen)  drawInventory();
+  if (helpOpen)       drawHelp();
 }
 
 function loop() {
-  if (!gameOver && !paused && !inventoryOpen && !tradeOpen) update();
+  if (!gameOver && !paused && !inventoryOpen && !tradeOpen && !helpOpen) update();
   draw();
   requestAnimationFrame(loop);
 }
