@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.22';
+const VERSION = '1.0.23';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -195,6 +195,8 @@ let handSlot  = null;
 let worldItems = [];
 
 let emeraldCount = 0;
+let ironCount    = 0;
+let diamondCount = 0;
 let tradeOpen    = false;
 let tradePartner = null;   // 'farmer' | 'blacksmith'
 let helpOpen     = false;
@@ -308,6 +310,8 @@ function resetGame() {
   tradePartner  = null;
   helpOpen      = false;
   emeraldCount  = 0;
+  ironCount     = 0;
+  diamondCount  = 0;
   inventory = ['apple', null, null, null, null, null, null, null, null];
   handSlot = null;
   joyRays = [];
@@ -421,10 +425,9 @@ canvas.addEventListener('click', e => {
             if (si) {
               inventory[idx] = null;
               if (si.currency === 'iron') {
-                let n = si.price;
-                for (let i = 0; i < inventory.length && n > 0; i++) {
-                  if (!inventory[i]) { inventory[i] = 'iron'; n--; }
-                }
+                const ironSlot = inventory.indexOf('iron');
+                if (ironSlot >= 0) { ironCount += si.price; }
+                else { inventory[idx] = 'iron'; ironCount += si.price; }
               } else {
                 const emSlot = inventory.indexOf('emerald');
                 if (emSlot >= 0) { emeraldCount += si.price; }
@@ -445,12 +448,9 @@ canvas.addEventListener('click', e => {
         const slot = inventory.indexOf(null);
         if (slot >= 0) {
           if (si.currency === 'iron') {
-            const ironInInv = inventory.filter(i => i === 'iron').length;
-            if (ironInInv >= si.price) {
-              let n = si.price;
-              for (let i = 0; i < inventory.length && n > 0; i++) {
-                if (inventory[i] === 'iron') { inventory[i] = null; n--; }
-              }
+            if (ironCount >= si.price) {
+              ironCount -= si.price;
+              syncIronSlot();
               inventory[slot] = si.id;
             }
           } else {
@@ -779,6 +779,29 @@ function syncEmeraldSlot() {
     const idx = inventory.indexOf('emerald');
     if (idx >= 0) inventory[idx] = null;
   }
+}
+
+function syncIronSlot() {
+  if (ironCount <= 0) {
+    ironCount = 0;
+    const idx = inventory.indexOf('iron');
+    if (idx >= 0) inventory[idx] = null;
+  }
+}
+
+function syncDiamondSlot() {
+  if (diamondCount <= 0) {
+    diamondCount = 0;
+    const idx = inventory.indexOf('diamond');
+    if (idx >= 0) inventory[idx] = null;
+  }
+}
+
+function stackCount(item) {
+  if (item === 'emerald') return emeraldCount;
+  if (item === 'iron')    return ironCount;
+  if (item === 'diamond') return diamondCount;
+  return 0;
 }
 
 function findNearbyTrader() {
@@ -1520,23 +1543,30 @@ function drawHUD() {
     ctx.textAlign = 'left';
   }
 
-  if (emeraldCount > 0) {
-    const eScale = 0.28;
-    const eSz    = Math.round(ISLOT * eScale);   // ~15px
-    const ex     = W - 68;
-    const ey     = H - 38;
+  const hudBadges = [
+    { id: 'emerald', count: emeraldCount, color: '#17DD62' },
+    { id: 'iron',    count: ironCount,    color: '#C8A060' },
+    { id: 'diamond', count: diamondCount, color: '#50C8FF' },
+  ];
+  const bScale = 0.28;
+  const bSz    = Math.round(ISLOT * bScale);
+  let badgeY = H - 38;
+  for (const b of hudBadges) {
+    if (b.count <= 0) continue;
+    const bx = W - 68;
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.fillRect(ex - 4, ey - 4, eSz + 38, eSz + 8);
+    ctx.fillRect(bx - 4, badgeY - 4, bSz + 38, bSz + 8);
     ctx.save();
-    ctx.translate(ex, ey);
-    ctx.scale(eScale, eScale);
-    drawItemIcon('emerald', 0, 0);
+    ctx.translate(bx, badgeY);
+    ctx.scale(bScale, bScale);
+    drawItemIcon(b.id, 0, 0);
     ctx.restore();
-    ctx.fillStyle = '#17DD62';
+    ctx.fillStyle = b.color;
     ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'right';
-    ctx.fillText(`x${emeraldCount}`, W - 8, ey + eSz - 1);
+    ctx.fillText(`x${b.count}`, W - 8, badgeY + bSz - 1);
     ctx.textAlign = 'left';
+    badgeY -= bSz + 12;
   }
 
   ctx.font = '10px monospace';
@@ -1761,11 +1791,12 @@ function drawSlot(sx, sy, item) {
   ctx.fillRect(sx + 4, sy + 4, ISLOT - 8, ISLOT - 8);
   if (item) {
     drawItemIcon(item, sx, sy);
-    if (item === 'emerald') {
+    const cnt = stackCount(item);
+    if (cnt > 0) {
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 11px monospace';
       ctx.textAlign = 'right';
-      ctx.fillText(`x${emeraldCount}`, sx + ISLOT - 3, sy + ISLOT - 3);
+      ctx.fillText(`x${cnt}`, sx + ISLOT - 3, sy + ISLOT - 3);
       ctx.textAlign = 'left';
     }
   }
@@ -1853,11 +1884,12 @@ function drawTSlot(sx, sy, item) {
     ctx.scale(sc, sc);
     drawItemIcon(item, 0, 0);
     ctx.restore();
-    if (item === 'emerald') {
+    const cnt = stackCount(item);
+    if (cnt > 0) {
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 9px monospace';
       ctx.textAlign = 'right';
-      ctx.fillText(`x${emeraldCount}`, sx + TSLOT - 2, sy + TSLOT - 2);
+      ctx.fillText(`x${cnt}`, sx + TSLOT - 2, sy + TSLOT - 2);
       ctx.textAlign = 'left';
     }
   }
@@ -1916,7 +1948,7 @@ function drawTradePanel() {
   const emIconX = px + TRADE_HALF / 2 - 28;
   const isBlacksmith = tradePartner === 'blacksmith';
   const currencyIcon  = isBlacksmith ? 'iron' : 'emerald';
-  const currencyCount = isBlacksmith ? inventory.filter(i => i === 'iron').length : emeraldCount;
+  const currencyCount = isBlacksmith ? ironCount : emeraldCount;
   ctx.save();
   ctx.translate(emIconX, emY - 4);
   ctx.scale(emSc, emSc);
@@ -1966,9 +1998,7 @@ function drawTradePanel() {
     ctx.fillText(`x${si.price}`, shopX + TSLOT + 10 + pSz + 3, shopY + 33);
 
     // Buy button
-    const availCurrency = si.currency === 'iron'
-      ? inventory.filter(i => i === 'iron').length
-      : emeraldCount;
+    const availCurrency = si.currency === 'iron' ? ironCount : emeraldCount;
     const canBuy  = availCurrency >= si.price;
     const hasRoom = inventory.indexOf(null) >= 0;
     const btnX = midX + TRADE_HALF - 82;
@@ -2102,16 +2132,21 @@ function update() {
       const overlapX = player.x + SW > item.x && player.x < item.x + ISLOT;
       const overlapY = player.y > item.y && player.y - SH < item.y + ISLOT;
       if (overlapX && overlapY) {
-        if (item.id === 'emerald') {
-          const emSlot = inventory.indexOf('emerald');
-          if (emSlot >= 0) {
-            emeraldCount++;
+        const stackable = item.id === 'emerald' || item.id === 'iron' || item.id === 'diamond';
+        if (stackable) {
+          const existing = inventory.indexOf(item.id);
+          if (existing >= 0) {
+            if (item.id === 'emerald') emeraldCount++;
+            else if (item.id === 'iron') ironCount++;
+            else diamondCount++;
             worldItems.splice(i, 1);
           } else {
             const emptySlot = inventory.indexOf(null);
             if (emptySlot >= 0) {
-              inventory[emptySlot] = 'emerald';
-              emeraldCount++;
+              inventory[emptySlot] = item.id;
+              if (item.id === 'emerald') emeraldCount++;
+              else if (item.id === 'iron') ironCount++;
+              else diamondCount++;
               worldItems.splice(i, 1);
             }
           }
