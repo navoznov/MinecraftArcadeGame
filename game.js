@@ -574,6 +574,32 @@ function drawZombie(x, y, facingRight, walking, frame, alpha) {
   ctx.restore();
 }
 
+function drawSkeleton(x, y, facingRight, walking, frame, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const legOffset = walking ? (frame === 0 ? 3 : -3) : 0;
+  drawSprite(SKELETON_PALETTE, SKELETON, x, y, facingRight, legOffset);
+
+  // Меч (железный, held at arm level)
+  const handY = y + CELL * 9;
+  const bx = facingRight ? x + SW + 1 : x - CELL - 1;
+
+  // Лезвие
+  ctx.fillStyle = '#C0C0C0';
+  ctx.fillRect(bx, handY - CELL * 5, CELL, CELL * 5);
+  // Блик лезвия
+  ctx.fillStyle = '#EFEFEF';
+  ctx.fillRect(bx + (facingRight ? 0 : CELL - 1), handY - CELL * 5, 1, CELL * 5);
+  // Гарда (крестовина)
+  ctx.fillStyle = '#7A5028';
+  ctx.fillRect(bx - CELL, handY, CELL * 3, CELL);
+  // Рукоять
+  ctx.fillStyle = '#4A2810';
+  ctx.fillRect(bx, handY + CELL, CELL, CELL * 2);
+
+  ctx.restore();
+}
+
 function drawMobs() {
   for (const mob of mobs) {
     const alpha = mob.alive ? 1 : mob.dyingTimer / 20;
@@ -586,7 +612,11 @@ function drawMobs() {
       ctx.scale(1 + (1 - s) * 0.5, s);
       ctx.translate(-cx, -by);
     }
-    drawZombie(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
+    if (isNether()) {
+      drawSkeleton(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
+    } else {
+      drawZombie(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
+    }
     if (!mob.alive) ctx.restore();
   }
 }
