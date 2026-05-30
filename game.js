@@ -1,7 +1,23 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.20';
+const VERSION = '1.0.21';
+
+const LEVEL_CONFIGS = [
+  { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
+  { theme: 'night',   mobType: 'zombie',   flyingMobType: 'phantom', hasVillagers: false, portal: 'pipe',   startItem: 'pickaxe', hasOres: false },
+  { theme: 'mine',    mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: true  },
+  { theme: 'forest',  mobType: 'zombie',   flyingMobType: 'phantom', hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'mine',    mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'portal', startItem: null,      hasOres: true  },
+  { theme: 'nether',  mobType: 'skeleton', flyingMobType: null,      hasVillagers: false, portal: 'portal', startItem: null,      hasOres: false },
+  { theme: 'village', mobType: null,       flyingMobType: null,      hasVillagers: true,  portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'desert',  mobType: 'husk',     flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'desert',  mobType: 'husk',     flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+];
+
+function levelCfg() {
+  return LEVEL_CONFIGS[(level - 1) % LEVEL_CONFIGS.length];
+}
 
 const W = 800;
 const H = 450;
@@ -256,8 +272,8 @@ function initWorldItems() {
   const top = platforms[5];
   const ix = top.x + Math.floor((top.w - ISLOT) / 2);
   const iy = top.y - ISLOT;
-  if (level === 1) worldItems.push({ id: 'sword',   x: ix, y: iy });
-  else if (level === 2) worldItems.push({ id: 'pickaxe', x: ix, y: iy });
+  const startItem = levelCfg().startItem;
+  if (startItem) worldItems.push({ id: startItem, x: ix, y: iy });
 }
 
 function resetGame() {
@@ -578,7 +594,7 @@ function spawnPhantom() {
 }
 
 function updatePhantoms() {
-  if (!isNight() || isMine() || isNether()) { phantoms = []; return; }
+  if (!levelCfg().flyingMobType) { phantoms = []; return; }
 
   phantomTimer++;
   if (phantomTimer >= spawnInterval && phantoms.length < 3 && !pipeVisible) {
@@ -607,7 +623,7 @@ function updatePhantoms() {
 function updateMobs() {
   spawnTimer++;
   const aliveMobs = mobs.filter(m => m.alive).length;
-  if (spawnTimer >= spawnInterval && aliveMobs < 5 && !pipeVisible && !isVillage()) {
+  if (spawnTimer >= spawnInterval && aliveMobs < 5 && !pipeVisible && levelCfg().mobType !== null) {
     spawnTimer = 0;
     spawnMob();
   }
@@ -785,9 +801,10 @@ function drawMobs() {
       ctx.scale(1 + (1 - s) * 0.5, s);
       ctx.translate(-cx, -by);
     }
-    if (isNether()) {
+    const mobType = levelCfg().mobType;
+    if (mobType === 'skeleton') {
       drawSkeleton(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
-    } else if (isDesert()) {
+    } else if (mobType === 'husk') {
       drawHusk(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
     } else {
       drawZombie(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
@@ -933,29 +950,12 @@ function drawPlatformNether(p) {
   ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
 }
 
-function isDesert() {
-  return level === 8 || level === 9;
-}
-
-function isNight() {
-  return level % 2 === 0 && !isDesert();
-}
-
-function isVillage() {
-  return level === 7;
-}
-
-function isMine() {
-  return level % 4 === 3 && !isVillage();
-}
-
-function isForest() {
-  return level % 4 === 0 && !isDesert();
-}
-
-function isNether() {
-  return level === 6;
-}
+function isDesert()  { return levelCfg().theme === 'desert'; }
+function isNight()   { return levelCfg().theme === 'night'; }
+function isVillage() { return levelCfg().hasVillagers; }
+function isMine()    { return levelCfg().theme === 'mine'; }
+function isForest()  { return levelCfg().theme === 'forest'; }
+function isNether()  { return levelCfg().theme === 'nether'; }
 
 function drawTorch(x, y) {
   ctx.fillStyle = '#FFFFA0';
@@ -2104,7 +2104,7 @@ function update() {
       if (player.x + SW - 4 > capLeft && player.x + 4 < capRight) {
         levelComplete = true;
         stopBgMusic();
-        if (level === 5 || level === 6) playPortalEnter(); else playPipeEnter();
+        if (levelCfg().portal === 'portal') playPortalEnter(); else playPipeEnter();
       }
     }
   }
@@ -2202,7 +2202,7 @@ function nextLevel() {
   pipeVisible   = isVillage();
   portalFrame   = 0;
   levelComplete = false;
-  if (isMine()) regenerateOreBlocks();
+  if (levelCfg().hasOres) regenerateOreBlocks();
   mobSpeed      = Math.min(mobSpeed * 1.15, 4.0);
   spawnInterval = Math.max(Math.floor(spawnInterval * 0.85), 80);
   player.x = W / 2 - 20;
@@ -2214,7 +2214,7 @@ function nextLevel() {
   player.walkTimer = 0;
   mobs = [];
   spawnTimer = 0;
-  if (!isVillage()) {
+  if (levelCfg().mobType !== null) {
     spawnMob(true, false);
     spawnMob(true, true);
   }
@@ -2270,7 +2270,7 @@ function draw() {
   platforms.forEach(drawPlatform);
   drawGround();
   if (pipeVisible) {
-    if (level === 5 || level === 6) { portalFrame++; drawNetherPortal(PIPE_X, GROUND_TOP); }
+    if (levelCfg().portal === 'portal') { portalFrame++; drawNetherPortal(PIPE_X, GROUND_TOP); }
     else drawPipe(PIPE_X, GROUND_TOP);
   }
   drawWorldItems();
