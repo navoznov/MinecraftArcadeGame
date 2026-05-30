@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.11';
+const VERSION = '1.0.12';
 
 const W = 800;
 const H = 450;
@@ -1657,7 +1657,7 @@ function drawHelp() {
   const step = 26;
 
   for (const [key, desc] of rows) {
-    ctx.fillStyle = '#FFD700';
+    ctx.fillStyle = '#7A5500';
     ctx.font = 'bold 13px monospace';
     ctx.textAlign = 'left';
     ctx.fillText(key, colKey, ry);
