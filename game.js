@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.13';
+const VERSION = '1.0.14';
 
 const W = 800;
 const H = 450;
@@ -1807,7 +1807,7 @@ function drawTradePanel() {
     ctx.scale(pSc, pSc);
     drawItemIcon('emerald', 0, 0);
     ctx.restore();
-    ctx.fillStyle = '#17DD62';
+    ctx.fillStyle = '#2A2A2A';
     ctx.font = 'bold 12px monospace';
     ctx.fillText(`x${si.price}`, shopX + TSLOT + 10 + pSz + 3, shopY + 33);
 
