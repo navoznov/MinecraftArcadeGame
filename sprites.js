@@ -195,6 +195,20 @@ const FARMER = [
   [5,5,5,0,0,5,5,5], // row 17 ступни
 ];
 
+// Husk palette — sandy tan skin, dark tattered rags (desert zombie variant)
+const HUSK_PALETTE = [
+  null,       // 0 transparent
+  '#C8A060',  // 1 sandy husk skin
+  '#5A3A10',  // 2 dark sandy-brown (head outline)
+  '#4A3828',  // 3 dark tattered shirt
+  '#2A2218',  // 4 very dark pants
+  '#181008',  // 5 dark shoes
+  '#FFFF80',  // 6 glowing yellow eyes
+  '#302418',  // 7 shirt shadow
+  '#1A1208',  // 8 pants shadow
+  '#7A5820',  // 9 open mouth
+];
+
 // Blacksmith/welder palette — кожаная рубаха, тёмный кузнечный фартук
 const BLACKSMITH_PALETTE = [
   null,       // 0 transparent

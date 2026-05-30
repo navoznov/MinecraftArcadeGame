@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.18';
+const VERSION = '1.0.19';
 
 const W = 800;
 const H = 450;
@@ -679,6 +679,14 @@ function drawZombie(x, y, facingRight, walking, frame, alpha) {
   ctx.restore();
 }
 
+function drawHusk(x, y, facingRight, walking, frame, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const legOffset = walking ? (frame === 0 ? 3 : -3) : 0;
+  drawSprite(HUSK_PALETTE, ZOMBIE, x, y, facingRight, legOffset);
+  ctx.restore();
+}
+
 function drawSkeleton(x, y, facingRight, walking, frame, alpha) {
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -779,6 +787,8 @@ function drawMobs() {
     }
     if (isNether()) {
       drawSkeleton(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
+    } else if (isDesert()) {
+      drawHusk(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
     } else {
       drawZombie(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
     }
