@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.8';
+const VERSION = '1.0.9';
 
 const W = 800;
 const H = 450;
@@ -164,6 +164,19 @@ let handSlot  = null;
 
 let worldItems = [];
 
+let emeraldCount = 0;
+let tradeOpen    = false;
+
+// ── Trade panel ───────────────────────────────────────────────
+const TRADE_PW   = 560;
+const TRADE_PH   = 310;
+const TRADE_PX   = (W - TRADE_PW) >> 1;   // 120
+const TRADE_PY   = (H - TRADE_PH) >> 1;   // 70
+const TRADE_HALF = TRADE_PW >> 1;          // 280
+const TSLOT      = 40;
+const TGAP       = 3;
+const FARMER_SHOP = [{ id: 'apple', price: 3 }];
+
 const player = {
   x: W / 2 - 20,
   y: GROUND_TOP,
@@ -257,6 +270,8 @@ function resetGame() {
   gameOver = false;
   paused = false;
   inventoryOpen = false;
+  tradeOpen     = false;
+  emeraldCount  = 0;
   inventory = ['apple', null, null, null, null, null, null, null, null];
   handSlot = null;
   joyRays = [];
@@ -291,11 +306,17 @@ document.addEventListener('keydown', e => {
   }
 
   if (!gameOver && !levelComplete && e.code === 'KeyQ') {
-    inventoryOpen = !inventoryOpen;
+    if (tradeOpen) { tradeOpen = false; } else { inventoryOpen = !inventoryOpen; }
     return;
   }
 
-  if (inventoryOpen) return;
+  if (!gameOver && !levelComplete && !paused && e.code === 'KeyR') {
+    if (tradeOpen) { tradeOpen = false; }
+    else if (findNearbyFarmer()) { inventoryOpen = false; tradeOpen = true; }
+    return;
+  }
+
+  if (inventoryOpen || tradeOpen) return;
 
   if (paused && (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'Space')) {
     paused = false;
@@ -343,6 +364,46 @@ canvas.addEventListener('click', e => {
   const r  = canvas.getBoundingClientRect();
   const cx = (e.clientX - r.left) * (W / r.width);
   const cy = (e.clientY - r.top)  * (H / r.height);
+
+  if (tradeOpen) {
+    // Left panel: sell inventory item to farmer
+    const gridW2    = 3 * TSLOT + 2 * TGAP;
+    const gridLeft2 = TRADE_PX + ((TRADE_HALF - gridW2) >> 1);
+    const gridTop2  = TRADE_PY + 32;
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3; col++) {
+        const sx = gridLeft2 + col * (TSLOT + TGAP);
+        const sy = gridTop2  + row * (TSLOT + TGAP);
+        if (cx >= sx && cx < sx + TSLOT && cy >= sy && cy < sy + TSLOT) {
+          const idx = row * 3 + col;
+          const it  = inventory[idx];
+          if (it) {
+            const si = FARMER_SHOP.find(s => s.id === it);
+            if (si) { inventory[idx] = null; emeraldCount += si.price; }
+          }
+          return;
+        }
+      }
+    }
+    // Right panel: buy item from farmer
+    const shopX2 = TRADE_PX + TRADE_HALF + 14;
+    let shopY2 = TRADE_PY + 32;
+    for (const si of FARMER_SHOP) {
+      if (cx >= shopX2 && cx < TRADE_PX + TRADE_PW - 8 && cy >= shopY2 && cy < shopY2 + TSLOT) {
+        if (emeraldCount >= si.price) {
+          const slot = inventory.indexOf(null);
+          if (slot >= 0) { emeraldCount -= si.price; inventory[slot] = si.id; }
+        }
+        return;
+      }
+      shopY2 += TSLOT + 8;
+    }
+    // Click outside panel closes it
+    if (cx < TRADE_PX || cx >= TRADE_PX + TRADE_PW || cy < TRADE_PY || cy >= TRADE_PY + TRADE_PH) {
+      tradeOpen = false;
+    }
+    return;
+  }
 
   if (inventoryOpen) {
     if (cx >= IPX && cx < IPX + IPW && cy >= IPY && cy < IPY + IPH) {
@@ -641,10 +702,29 @@ function drawVillager(x, y, facingRight, frame, type) {
   else                        drawSprite(VILLAGER_PALETTE,   VILLAGER, x, y, facingRight, legOffset);
 }
 
+function findNearbyFarmer() {
+  if (!isVillage()) return null;
+  for (const v of villagers) {
+    if (v.type !== 'farmer') continue;
+    if (Math.abs((v.x + SW / 2) - (player.x + SW / 2)) < 80) return v;
+  }
+  return null;
+}
+
 function drawVillagers() {
   if (!isVillage()) return;
   for (const v of villagers) {
     drawVillager(v.x, GROUND_TOP - SH, v.facingRight, v.walkFrame, v.type);
+  }
+  if (!tradeOpen && !inventoryOpen) {
+    const f = findNearbyFarmer();
+    if (f) {
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(f.x - 2, GROUND_TOP - SH - 20, 50, 14);
+      ctx.fillStyle = '#FFFF99';
+      ctx.font = '10px monospace';
+      ctx.fillText('[R] торг.', f.x, GROUND_TOP - SH - 9);
+    }
   }
 }
 
@@ -1266,6 +1346,25 @@ function drawHUD() {
     ctx.textAlign = 'left';
   }
 
+  if (emeraldCount > 0) {
+    const eScale = 0.28;
+    const eSz    = Math.round(ISLOT * eScale);   // ~15px
+    const ex     = W - 68;
+    const ey     = H - 38;
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(ex - 4, ey - 4, eSz + 38, eSz + 8);
+    ctx.save();
+    ctx.translate(ex, ey);
+    ctx.scale(eScale, eScale);
+    drawItemIcon('emerald', 0, 0);
+    ctx.restore();
+    ctx.fillStyle = '#17DD62';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`x${emeraldCount}`, W - 8, ey + eSz - 1);
+    ctx.textAlign = 'left';
+  }
+
   ctx.font = '10px monospace';
   ctx.fillStyle = 'rgba(255,255,255,0.45)';
   ctx.textAlign = 'right';
@@ -1483,6 +1582,150 @@ function drawSlot(sx, sy, item) {
   if (item) drawItemIcon(item, sx, sy);
 }
 
+function drawTSlot(sx, sy, item) {
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(sx, sy, TSLOT, 2);
+  ctx.fillRect(sx, sy, 2, TSLOT);
+  ctx.fillStyle = '#555555';
+  ctx.fillRect(sx,           sy + TSLOT - 2, TSLOT, 2);
+  ctx.fillRect(sx + TSLOT - 2, sy,           2, TSLOT);
+  ctx.fillStyle = '#373737';
+  ctx.fillRect(sx + 2, sy + 2, TSLOT - 4, 2);
+  ctx.fillRect(sx + 2, sy + 2, 2, TSLOT - 4);
+  ctx.fillStyle = '#8B8B8B';
+  ctx.fillRect(sx + 2, sy + TSLOT - 4, TSLOT - 4, 2);
+  ctx.fillRect(sx + TSLOT - 4, sy + 2, 2, TSLOT - 4);
+  ctx.fillStyle = '#595959';
+  ctx.fillRect(sx + 4, sy + 4, TSLOT - 8, TSLOT - 8);
+  if (item) {
+    const sc = TSLOT / ISLOT;
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.scale(sc, sc);
+    drawItemIcon(item, 0, 0);
+    ctx.restore();
+  }
+}
+
+function drawTradePanel() {
+  const px = TRADE_PX, py = TRADE_PY, pw = TRADE_PW, ph = TRADE_PH;
+  const midX = px + TRADE_HALF;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = '#C6C6C6';
+  ctx.fillRect(px, py, pw, ph);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(px, py, pw, 2);
+  ctx.fillRect(px, py, 2, ph);
+  ctx.fillStyle = '#555555';
+  ctx.fillRect(px, py + ph - 2, pw, 2);
+  ctx.fillRect(px + pw - 2, py, 2, ph);
+  ctx.fillStyle = '#888888';
+  ctx.fillRect(midX, py + 6, 2, ph - 12);
+
+  // ── Left: player inventory ──
+  ctx.fillStyle = '#3F3F3F';
+  ctx.font = 'bold 13px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Инвентарь', px + TRADE_HALF / 2, py + 22);
+
+  const gridW    = 3 * TSLOT + 2 * TGAP;
+  const gridLeft = px + ((TRADE_HALF - gridW) >> 1);
+  const gridTop  = py + 32;
+
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      const sx = gridLeft + col * (TSLOT + TGAP);
+      const sy = gridTop  + row * (TSLOT + TGAP);
+      drawTSlot(sx, sy, inventory[row * 3 + col]);
+      // Green tint on sellable items
+      const it = inventory[row * 3 + col];
+      if (it && FARMER_SHOP.find(s => s.id === it)) {
+        ctx.save();
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = '#00FF00';
+        ctx.fillRect(sx + 2, sy + 2, TSLOT - 4, TSLOT - 4);
+        ctx.restore();
+      }
+    }
+  }
+
+  // Emerald count below grid
+  const emY    = gridTop + 3 * (TSLOT + TGAP) - TGAP + 16;
+  const emSc   = 0.27;
+  const emSz   = Math.round(ISLOT * emSc);
+  const emIconX = px + TRADE_HALF / 2 - 28;
+  ctx.save();
+  ctx.translate(emIconX, emY - 4);
+  ctx.scale(emSc, emSc);
+  drawItemIcon('emerald', 0, 0);
+  ctx.restore();
+  ctx.fillStyle = '#17DD62';
+  ctx.font = 'bold 13px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`x${emeraldCount}`, emIconX + emSz + 4, emY + emSz * 0.55);
+
+  ctx.fillStyle = '#5A5A5A';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('клик по предмету — продать', px + TRADE_HALF / 2, py + ph - 8);
+
+  // ── Right: farmer shop ──
+  ctx.fillStyle = '#3F3F3F';
+  ctx.font = 'bold 13px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Фермер', midX + TRADE_HALF / 2, py + 22);
+
+  const shopX = midX + 14;
+  let shopY = py + 32;
+
+  for (const si of FARMER_SHOP) {
+    drawTSlot(shopX, shopY, si.id);
+
+    const name = si.id === 'apple' ? 'Яблоко' : si.id;
+    ctx.fillStyle = '#3F3F3F';
+    ctx.font = '13px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(name, shopX + TSLOT + 10, shopY + 15);
+
+    // Price: tiny emerald + count
+    const pSc  = 0.22;
+    const pSz  = Math.round(ISLOT * pSc);
+    ctx.save();
+    ctx.translate(shopX + TSLOT + 10, shopY + 20);
+    ctx.scale(pSc, pSc);
+    drawItemIcon('emerald', 0, 0);
+    ctx.restore();
+    ctx.fillStyle = '#17DD62';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(`x${si.price}`, shopX + TSLOT + 10 + pSz + 3, shopY + 33);
+
+    // Buy button
+    const canBuy  = emeraldCount >= si.price;
+    const hasRoom = inventory.indexOf(null) >= 0;
+    const btnX = midX + TRADE_HALF - 82;
+    const btnW = 70;
+    const btnH = 22;
+    const btnY = shopY + (TSLOT - btnH) >> 1;
+    ctx.fillStyle = (canBuy && hasRoom) ? '#2A7A2A' : '#5A5A5A';
+    ctx.fillRect(btnX, btnY, btnW, btnH);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Купить', btnX + btnW / 2, btnY + 15);
+
+    shopY += TSLOT + 8;
+  }
+
+  ctx.fillStyle = '#5A5A5A';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('R — закрыть', midX + TRADE_HALF / 2, py + ph - 8);
+  ctx.textAlign = 'left';
+}
+
 function drawInventory() {
   ctx.fillStyle = 'rgba(0,0,0,0.65)';
   ctx.fillRect(0, 0, W, H);
@@ -1593,8 +1836,13 @@ function update() {
       const overlapX = player.x + SW > item.x && player.x < item.x + ISLOT;
       const overlapY = player.y > item.y && player.y - SH < item.y + ISLOT;
       if (overlapX && overlapY) {
-        const slot = inventory.indexOf(null);
-        if (slot >= 0) { inventory[slot] = item.id; worldItems.splice(i, 1); }
+        if (item.id === 'emerald') {
+          emeraldCount++;
+          worldItems.splice(i, 1);
+        } else {
+          const slot = inventory.indexOf(null);
+          if (slot >= 0) { inventory[slot] = item.id; worldItems.splice(i, 1); }
+        }
       }
     }
 
@@ -1722,7 +1970,8 @@ function nextLevel() {
   if (isVillage()) initVillagers();
   phantoms = [];
   phantomTimer = Math.floor(spawnInterval / 2);
-  paused = false;
+  paused    = false;
+  tradeOpen = false;
   joyRays = [];
   swordSwing = { active: false, timer: 0 };
   useCooldown = 0;
@@ -1782,11 +2031,12 @@ function draw() {
   if (levelComplete)  drawLevelComplete();
   if (gameOver)       drawGameOver();
   if (paused)         drawPaused();
+  if (tradeOpen)      drawTradePanel();
   if (inventoryOpen)  drawInventory();
 }
 
 function loop() {
-  if (!gameOver && !paused && !inventoryOpen) update();
+  if (!gameOver && !paused && !inventoryOpen && !tradeOpen) update();
   draw();
   requestAnimationFrame(loop);
 }
