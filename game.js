@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.23';
+const VERSION = '1.0.24';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -12,7 +12,7 @@ const LEVEL_CONFIGS = [
   { theme: 'nether',  mobType: 'skeleton', flyingMobType: null,      hasVillagers: false, portal: 'portal', startItem: null,      hasOres: false },
   { theme: 'village', mobType: null,       flyingMobType: null,      hasVillagers: true,  portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'desert',  mobType: 'husk',     flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
-  { theme: 'desert',  mobType: 'husk',     flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'pyramid', mobType: 'husk',     flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
 ];
 
 function levelCfg() {
@@ -115,6 +115,12 @@ const desertGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
 desertGradient.addColorStop(0,   '#7AB8E8');
 desertGradient.addColorStop(0.6, '#C8D8F0');
 desertGradient.addColorStop(1,   '#E8D8A8');
+
+// Pyramid (Egyptian) sky gradient — deep blue to golden horizon
+const pyramidGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
+pyramidGradient.addColorStop(0,   '#3A80C0');
+pyramidGradient.addColorStop(0.5, '#88BCDC');
+pyramidGradient.addColorStop(1,   '#E0C060');
 
 // Desert background cactus X positions
 const DESERT_CACTI = [
@@ -878,6 +884,7 @@ function drawGround() {
   if (isNether()) { drawGroundNether(); return; }
   if (isVillage()) { drawGroundVillage(); return; }
   if (isDesert()) { drawGroundDesert(); return; }
+  if (isPyramid()) { drawGroundPyramid(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -928,12 +935,25 @@ function drawGroundDesert() {
   }
 }
 
+function drawGroundPyramid() {
+  ctx.fillStyle = '#D4B060';
+  ctx.fillRect(0, GROUND_TOP, W, 12);
+  ctx.fillStyle = '#B88C3A';
+  ctx.fillRect(0, GROUND_TOP + 12, W, H - GROUND_TOP - 12);
+  ctx.fillStyle = '#9A7228';
+  for (let bx = 0; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, 5);
+    ctx.fillRect(bx, GROUND_TOP, 2, 12);
+  }
+}
+
 function drawPlatform(p) {
   if (isMine()) { drawPlatformMine(p); return; }
   if (isForest()) { drawPlatformBranch(p); return; }
   if (isNether()) { drawPlatformNether(p); return; }
   if (isVillage()) { drawPlatformVillage(p); return; }
   if (isDesert()) { drawPlatformDesert(p); return; }
+  if (isPyramid()) { drawPlatformPyramid(p); return; }
   const platH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -992,6 +1012,7 @@ function drawPlatformNether(p) {
 }
 
 function isDesert()  { return levelCfg().theme === 'desert'; }
+function isPyramid() { return levelCfg().theme === 'pyramid'; }
 function isNight()   { return levelCfg().theme === 'night'; }
 function isVillage() { return levelCfg().hasVillagers; }
 function isMine()    { return levelCfg().theme === 'mine'; }
@@ -1153,6 +1174,25 @@ function drawPlatformDesert(p) {
   }
   ctx.fillStyle = '#B89448';
   for (let bx = p.x; bx < p.x + p.w; bx += 16) {
+    ctx.fillRect(bx, p.y, 2, platH);
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
+}
+
+function drawPlatformPyramid(p) {
+  const platH = 24;
+  // Limestone blocks — lighter top face, darker sides
+  ctx.fillStyle = '#C8A84A';
+  ctx.fillRect(p.x, p.y, p.w, platH);
+  ctx.fillStyle = '#DEC06A';
+  ctx.fillRect(p.x, p.y, p.w, 7);
+  ctx.fillStyle = '#8A6820';
+  for (let by = p.y + 8; by < p.y + platH; by += 8) {
+    ctx.fillRect(p.x, by, p.w, 1);
+  }
+  ctx.fillStyle = '#A07C30';
+  for (let bx = p.x; bx < p.x + p.w; bx += 20) {
     ctx.fillRect(bx, p.y, 2, platH);
   }
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -1424,12 +1464,64 @@ function drawBackgroundDesert() {
   for (const c of DESERT_CACTI) drawCactus(c.x);
 }
 
+function drawEgyptPyramid(cx, baseW, steps) {
+  const stepH = 9;
+  const totalH = steps * stepH;
+  const stepW = baseW / steps;
+  for (let s = 0; s < steps; s++) {
+    const w = Math.round(stepW * (s + 1));
+    const y = GROUND_TOP - totalH + s * stepH;
+    const x = cx - Math.round(w / 2);
+    const half = Math.ceil(w / 2);
+    ctx.fillStyle = '#C89A3A';
+    ctx.fillRect(x, y, half, stepH);
+    ctx.fillStyle = '#7A5A18';
+    ctx.fillRect(x + half, y, w - half, stepH);
+    ctx.fillStyle = '#A07828';
+    ctx.fillRect(x, y, w, 2);
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(cx, GROUND_TOP - steps * stepH, Math.round(baseW / 2), steps * stepH);
+}
+
+function drawBackgroundPyramid() {
+  ctx.fillStyle = pyramidGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  // Blazing Egyptian sun (upper right)
+  ctx.fillStyle = '#FFD020';
+  ctx.fillRect(W - 110, 44, 60, 60);
+  ctx.fillStyle = '#FFE860';
+  ctx.fillRect(W - 98, 28, 36, 10);
+  ctx.fillRect(W - 98, 114, 36, 10);
+  ctx.fillRect(W - 126, 60, 10, 28);
+  ctx.fillRect(W - 46,  60, 10, 28);
+  ctx.fillRect(W - 118, 40, 12, 12);
+  ctx.fillRect(W - 46,  40, 12, 12);
+  ctx.fillRect(W - 118, 100, 12, 12);
+  ctx.fillRect(W - 46,  100, 12, 12);
+
+  // Sand haze near horizon
+  ctx.fillStyle = 'rgba(220,180,60,0.18)';
+  ctx.fillRect(0, GROUND_TOP - 30, W, 30);
+
+  // Far small pyramid (centre background)
+  drawEgyptPyramid(390, 90, 9);
+
+  // Medium pyramid (left)
+  drawEgyptPyramid(165, 150, 14);
+
+  // Large pyramid (right)
+  drawEgyptPyramid(610, 210, 20);
+}
+
 function drawBackground() {
   if (isMine()) { drawBackgroundMine(); return; }
   if (isForest()) { drawBackgroundForest(); return; }
   if (isNether()) { drawBackgroundNether(); return; }
   if (isVillage()) { drawBackgroundVillage(); return; }
   if (isDesert()) { drawBackgroundDesert(); return; }
+  if (isPyramid()) { drawBackgroundPyramid(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
