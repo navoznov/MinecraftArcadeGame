@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.6';
+const VERSION = '1.0.7';
 
 const W = 800;
 const H = 450;
@@ -606,9 +606,9 @@ function drawSkeleton(x, y, facingRight, walking, frame, alpha) {
 
 function initVillagers() {
   villagers = [
-    { x: 110, vx:  0.6, facingRight: true,  walkFrame: 0, walkTimer: 0, minX:  50, maxX: 300 },
-    { x: 420, vx: -0.5, facingRight: false, walkFrame: 0, walkTimer: 8, minX: 280, maxX: 540 },
-    { x: 560, vx:  0.7, facingRight: true,  walkFrame: 0, walkTimer: 4, minX: 400, maxX: 650 },
+    { x: 110, vx:  0.6, facingRight: true,  walkFrame: 0, walkTimer: 0, minX:  50, maxX: 300, type: 'farmer' },
+    { x: 420, vx: -0.5, facingRight: false, walkFrame: 0, walkTimer: 8, minX: 280, maxX: 540, type: 'blacksmith' },
+    { x: 560, vx:  0.7, facingRight: true,  walkFrame: 0, walkTimer: 4, minX: 400, maxX: 650, type: 'villager' },
   ];
 }
 
@@ -623,15 +623,17 @@ function updateVillagers() {
   }
 }
 
-function drawVillager(x, y, facingRight, frame) {
+function drawVillager(x, y, facingRight, frame, type) {
   const legOffset = frame === 0 ? 3 : -3;
-  drawSprite(VILLAGER_PALETTE, VILLAGER, x, y, facingRight, legOffset);
+  if (type === 'farmer')      drawSprite(FARMER_PALETTE,     FARMER,   x, y, facingRight, legOffset);
+  else if (type === 'blacksmith') drawSprite(BLACKSMITH_PALETTE, VILLAGER, x, y, facingRight, legOffset);
+  else                        drawSprite(VILLAGER_PALETTE,   VILLAGER, x, y, facingRight, legOffset);
 }
 
 function drawVillagers() {
   if (!isVillage()) return;
   for (const v of villagers) {
-    drawVillager(v.x, GROUND_TOP - SH, v.facingRight, v.walkFrame);
+    drawVillager(v.x, GROUND_TOP - SH, v.facingRight, v.walkFrame, v.type);
   }
 }
 

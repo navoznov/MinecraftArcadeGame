@@ -159,6 +159,55 @@ const VILLAGER = [
   [5,5,5,0,0,5,5,5], // row 17 ступни
 ];
 
+// Farmer palette — соломенная шляпа, коричневая рубаха, тёмные штаны
+const FARMER_PALETTE = [
+  null,       // 0 transparent
+  '#C68642',  // 1 tan skin
+  '#8B6914',  // 2 dark straw (hat outline)
+  '#8B4513',  // 3 brown shirt
+  '#5A3010',  // 4 dark brown pants
+  '#1A0E04',  // 5 dark (eyes, shoes)
+  '#A06030',  // 6 skin shadow (nose)
+  '#6B3510',  // 7 shirt shadow
+  '#3A2008',  // 8 pants shadow
+  '#D4A820',  // 9 bright straw (hat)
+];
+
+// Farmer: same body as villager, straw hat on head
+const FARMER = [
+  [9,9,9,9,9,9,9,9], // row 0  поля соломенной шляпы (полная ширина)
+  [0,2,9,9,9,9,2,0], // row 1  тулья шляпы
+  [2,1,1,1,1,1,1,2], // row 2  лоб
+  [2,1,2,2,2,2,1,2], // row 3  унибровь
+  [2,1,5,1,1,5,1,2], // row 4  глаза
+  [2,1,1,6,6,1,1,2], // row 5  нос
+  [2,1,1,6,6,1,1,2], // row 6  нос
+  [2,1,1,1,1,1,1,2], // row 7  подбородок
+  [0,3,3,3,3,3,3,0], // row 8  коричневая рубаха, плечи
+  [3,3,3,3,3,3,3,3], // row 9  грудь
+  [3,3,7,3,3,7,3,3], // row 10 тень
+  [3,3,3,3,3,3,3,3], // row 11 грудь низ
+  [3,7,4,4,4,4,7,3], // row 12 пояс
+  [4,4,4,0,0,4,4,4], // row 13 штаны
+  [4,4,4,0,0,4,4,4], // row 14
+  [4,8,4,0,0,4,8,4], // row 15 тень
+  [4,4,4,0,0,4,4,4], // row 16
+  [5,5,5,0,0,5,5,5], // row 17 ступни
+];
+
+// Blacksmith/welder palette — кожаная рубаха, тёмный кузнечный фартук
+const BLACKSMITH_PALETTE = [
+  null,       // 0 transparent
+  '#C68642',  // 1 tan skin
+  '#3A1C08',  // 2 dark brown (outline, unibrow)
+  '#6A4A30',  // 3 leather shirt
+  '#1A1210',  // 4 dark forge apron
+  '#1A0E04',  // 5 dark (eyes, shoes)
+  '#A06030',  // 6 skin shadow (nose)
+  '#4A3020',  // 7 leather shadow
+  '#0A0808',  // 8 apron shadow
+];
+
 const CELL = 5; // px per sprite cell
 const SW = 8 * CELL;  // sprite width  = 40
 const SH = 18 * CELL; // sprite height = 90
