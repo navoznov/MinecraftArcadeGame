@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.21';
+const VERSION = '1.0.22';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -207,9 +207,9 @@ const TRADE_PY   = (H - TRADE_PH) >> 1;   // 70
 const TRADE_HALF = TRADE_PW >> 1;          // 280
 const TSLOT      = 40;
 const TGAP       = 3;
-const FARMER_SHOP     = [{ id: 'apple',   price: 3 }];
-const BLACKSMITH_SHOP = [{ id: 'sword',   price: 7 },
-                         { id: 'pickaxe', price: 5 }];
+const FARMER_SHOP     = [{ id: 'apple',   price: 3, currency: 'emerald' }];
+const BLACKSMITH_SHOP = [{ id: 'sword',   price: 4, currency: 'iron' },
+                         { id: 'pickaxe', price: 4, currency: 'iron' }];
 
 const player = {
   x: W / 2 - 20,
@@ -420,24 +420,42 @@ canvas.addEventListener('click', e => {
             const si = shop.find(s => s.id === it);
             if (si) {
               inventory[idx] = null;
-              const emSlot = inventory.indexOf('emerald');
-              if (emSlot >= 0) { emeraldCount += si.price; }
-              else { inventory[idx] = 'emerald'; emeraldCount += si.price; }
+              if (si.currency === 'iron') {
+                let n = si.price;
+                for (let i = 0; i < inventory.length && n > 0; i++) {
+                  if (!inventory[i]) { inventory[i] = 'iron'; n--; }
+                }
+              } else {
+                const emSlot = inventory.indexOf('emerald');
+                if (emSlot >= 0) { emeraldCount += si.price; }
+                else { inventory[idx] = 'emerald'; emeraldCount += si.price; }
+              }
             }
           }
           return;
         }
       }
     }
-    // Right panel: buy item from farmer
+    // Right panel: buy item from shop
     const shopX2 = TRADE_PX + TRADE_HALF + 14;
     let shopY2 = TRADE_PY + 32;
     const currentShop2 = tradePartner === 'blacksmith' ? BLACKSMITH_SHOP : FARMER_SHOP;
     for (const si of currentShop2) {
       if (cx >= shopX2 && cx < TRADE_PX + TRADE_PW - 8 && cy >= shopY2 && cy < shopY2 + TSLOT) {
-        if (emeraldCount >= si.price) {
-          const slot = inventory.indexOf(null);
-          if (slot >= 0) { emeraldCount -= si.price; inventory[slot] = si.id; syncEmeraldSlot(); }
+        const slot = inventory.indexOf(null);
+        if (slot >= 0) {
+          if (si.currency === 'iron') {
+            const ironInInv = inventory.filter(i => i === 'iron').length;
+            if (ironInInv >= si.price) {
+              let n = si.price;
+              for (let i = 0; i < inventory.length && n > 0; i++) {
+                if (inventory[i] === 'iron') { inventory[i] = null; n--; }
+              }
+              inventory[slot] = si.id;
+            }
+          } else {
+            if (emeraldCount >= si.price) { emeraldCount -= si.price; inventory[slot] = si.id; syncEmeraldSlot(); }
+          }
         }
         return;
       }
@@ -1891,20 +1909,23 @@ function drawTradePanel() {
     }
   }
 
-  // Emerald count below grid
+  // Currency count below grid
   const emY    = gridTop + 3 * (TSLOT + TGAP) - TGAP + 16;
   const emSc   = 0.27;
   const emSz   = Math.round(ISLOT * emSc);
   const emIconX = px + TRADE_HALF / 2 - 28;
+  const isBlacksmith = tradePartner === 'blacksmith';
+  const currencyIcon  = isBlacksmith ? 'iron' : 'emerald';
+  const currencyCount = isBlacksmith ? inventory.filter(i => i === 'iron').length : emeraldCount;
   ctx.save();
   ctx.translate(emIconX, emY - 4);
   ctx.scale(emSc, emSc);
-  drawItemIcon('emerald', 0, 0);
+  drawItemIcon(currencyIcon, 0, 0);
   ctx.restore();
-  ctx.fillStyle = '#17DD62';
+  ctx.fillStyle = isBlacksmith ? '#C8A060' : '#17DD62';
   ctx.font = 'bold 13px monospace';
   ctx.textAlign = 'left';
-  ctx.fillText(`x${emeraldCount}`, emIconX + emSz + 4, emY + emSz * 0.55);
+  ctx.fillText(`x${currencyCount}`, emIconX + emSz + 4, emY + emSz * 0.55);
 
   ctx.fillStyle = '#5A5A5A';
   ctx.font = '10px monospace';
@@ -1932,20 +1953,23 @@ function drawTradePanel() {
     ctx.textAlign = 'left';
     ctx.fillText(name, shopX + TSLOT + 10, shopY + 15);
 
-    // Price: tiny emerald + count
+    // Price: tiny currency icon + count
     const pSc  = 0.22;
     const pSz  = Math.round(ISLOT * pSc);
     ctx.save();
     ctx.translate(shopX + TSLOT + 10, shopY + 20);
     ctx.scale(pSc, pSc);
-    drawItemIcon('emerald', 0, 0);
+    drawItemIcon(si.currency, 0, 0);
     ctx.restore();
     ctx.fillStyle = '#2A2A2A';
     ctx.font = 'bold 12px monospace';
     ctx.fillText(`x${si.price}`, shopX + TSLOT + 10 + pSz + 3, shopY + 33);
 
     // Buy button
-    const canBuy  = emeraldCount >= si.price;
+    const availCurrency = si.currency === 'iron'
+      ? inventory.filter(i => i === 'iron').length
+      : emeraldCount;
+    const canBuy  = availCurrency >= si.price;
     const hasRoom = inventory.indexOf(null) >= 0;
     const btnX = midX + TRADE_HALF - 82;
     const btnW = 70;
