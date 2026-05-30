@@ -222,6 +222,42 @@ const BLACKSMITH_PALETTE = [
   '#0A0808',  // 8 apron shadow
 ];
 
+// Pillager palette — gray iron cap, grayish-tan skin, dark maroon coat, dark pants
+const PILLAGER_PALETTE = [
+  null,       // 0 transparent
+  '#B0A080',  // 1 grayish-tan skin
+  '#606870',  // 2 gray iron cap + outline
+  '#5C2018',  // 3 dark maroon coat
+  '#2A1E14',  // 4 very dark pants
+  '#181008',  // 5 dark shoes
+  '#1A1A14',  // 6 dark menacing eyes
+  '#3C140C',  // 7 coat shadow
+  '#181008',  // 8 pants shadow
+  '#887058',  // 9 skin shadow (nose)
+];
+
+// Pillager: 8 wide × 18 tall — iron cap, unibrow, maroon coat, crossbow drawn separately
+const PILLAGER = [
+  [0,2,2,2,2,2,2,0], // row 0  iron cap top
+  [2,2,2,2,2,2,2,2], // row 1  cap brim (full width)
+  [2,1,1,1,1,1,1,2], // row 2  forehead
+  [2,1,2,2,2,2,1,2], // row 3  unibrow (villager-like)
+  [2,1,6,1,1,6,1,2], // row 4  eyes
+  [2,1,1,9,9,1,1,2], // row 5  big nose
+  [2,1,1,9,9,1,1,2], // row 6  nose cont
+  [2,1,1,1,1,1,1,2], // row 7  chin
+  [0,3,3,3,3,3,3,0], // row 8  shoulders (dark maroon)
+  [3,3,3,3,3,3,3,3], // row 9  chest
+  [3,3,7,3,3,7,3,3], // row 10 chest shadow
+  [3,3,3,3,3,3,3,3], // row 11 chest lower
+  [3,7,4,4,4,4,7,3], // row 12 waist/belt
+  [4,4,4,0,0,4,4,4], // row 13 pants
+  [4,4,4,0,0,4,4,4], // row 14
+  [4,8,4,0,0,4,8,4], // row 15 shadow
+  [4,4,4,0,0,4,4,4], // row 16
+  [5,5,5,0,0,5,5,5], // row 17 shoes
+];
+
 const CELL = 5; // px per sprite cell
 const SW = 8 * CELL;  // sprite width  = 40
 const SH = 18 * CELL; // sprite height = 90

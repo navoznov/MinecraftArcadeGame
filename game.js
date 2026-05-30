@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.25';
+const VERSION = '1.0.26';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -13,6 +13,7 @@ const LEVEL_CONFIGS = [
   { theme: 'village', mobType: null,       flyingMobType: null,      hasVillagers: true,  portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'desert',  mobType: 'husk',     flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'pyramid', mobType: 'husk',     flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'outpost', mobType: 'pillager', flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
 ];
 
 function levelCfg() {
@@ -121,6 +122,12 @@ const pyramidGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
 pyramidGradient.addColorStop(0,   '#3A80C0');
 pyramidGradient.addColorStop(0.5, '#88BCDC');
 pyramidGradient.addColorStop(1,   '#E0C060');
+
+// Outpost sky gradient — overcast, ominous gray-blue
+const outpostGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
+outpostGradient.addColorStop(0,   '#2A3848');
+outpostGradient.addColorStop(0.5, '#48586A');
+outpostGradient.addColorStop(1,   '#607080');
 
 // Desert background cactus X positions
 const DESERT_CACTI = [
@@ -727,6 +734,38 @@ function drawHusk(x, y, facingRight, walking, frame, alpha) {
   ctx.restore();
 }
 
+function drawPillager(x, y, facingRight, walking, frame, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const legOffset = walking ? (frame === 0 ? 3 : -3) : 0;
+  drawSprite(PILLAGER_PALETTE, PILLAGER, x, y, facingRight, legOffset);
+
+  // Crossbow held forward
+  const handY  = y + CELL * 9;
+  const stockW = CELL * 4;
+  const stockX = facingRight ? x + SW + 2 : x - stockW - 2;
+  const limbX  = facingRight ? stockX + CELL * 3 : stockX;
+
+  // Stock (horizontal barrel)
+  ctx.fillStyle = '#5A3010';
+  ctx.fillRect(stockX, handY, stockW, CELL);
+  ctx.fillStyle = '#7A4820';
+  ctx.fillRect(stockX, handY, stockW, 2);
+
+  // Bow limbs (vertical, at far end)
+  ctx.fillStyle = '#8B5A28';
+  ctx.fillRect(limbX, handY - CELL * 2, CELL, CELL * 5);
+  ctx.fillStyle = '#A07038';
+  ctx.fillRect(limbX + 1, handY - CELL * 2, 2, CELL * 5);
+
+  // Bowstring (two lines from tips to nock)
+  ctx.fillStyle = '#D8C898';
+  ctx.fillRect(limbX + 2, handY - CELL * 2, 1, CELL * 2);
+  ctx.fillRect(limbX + 2, handY + CELL,     1, CELL * 2);
+
+  ctx.restore();
+}
+
 function drawSkeleton(x, y, facingRight, walking, frame, alpha) {
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -853,6 +892,8 @@ function drawMobs() {
       drawSkeleton(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
     } else if (mobType === 'husk') {
       drawHusk(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
+    } else if (mobType === 'pillager') {
+      drawPillager(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
     } else {
       drawZombie(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
     }
@@ -885,6 +926,7 @@ function drawGround() {
   if (isVillage()) { drawGroundVillage(); return; }
   if (isDesert()) { drawGroundDesert(); return; }
   if (isPyramid()) { drawGroundPyramid(); return; }
+  if (isOutpost()) { drawGroundOutpost(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -954,6 +996,7 @@ function drawPlatform(p) {
   if (isVillage()) { drawPlatformVillage(p); return; }
   if (isDesert()) { drawPlatformDesert(p); return; }
   if (isPyramid()) { drawPlatformPyramid(p); return; }
+  if (isOutpost()) { drawPlatformOutpost(p); return; }
   const platH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -1013,6 +1056,7 @@ function drawPlatformNether(p) {
 
 function isDesert()  { return levelCfg().theme === 'desert'; }
 function isPyramid() { return levelCfg().theme === 'pyramid'; }
+function isOutpost() { return levelCfg().theme === 'outpost'; }
 function isNight()   { return levelCfg().theme === 'night'; }
 function isVillage() { return levelCfg().hasVillagers; }
 function isMine()    { return levelCfg().theme === 'mine'; }
@@ -1514,6 +1558,141 @@ function drawBackgroundPyramid() {
   drawEgyptPyramid(610, 210, 20);
 }
 
+function drawOutpostTree(tx) {
+  // Dark spruce silhouette
+  ctx.fillStyle = '#1A2C1A';
+  ctx.fillRect(tx - 2,  GROUND_TOP - 130, 4, 130); // trunk
+  ctx.fillStyle = '#223022';
+  // Three triangular layers (bottom-up, getting narrower)
+  ctx.fillRect(tx - 22, GROUND_TOP - 80,  44, 45);
+  ctx.fillRect(tx - 16, GROUND_TOP - 115, 32, 40);
+  ctx.fillRect(tx - 10, GROUND_TOP - 142, 20, 32);
+  ctx.fillRect(tx - 5,  GROUND_TOP - 158, 10, 20);
+}
+
+function drawPillagerTower(cx) {
+  const tw = 56;  // tower body width
+  const tx = cx - Math.round(tw / 2);
+  const th = 210; // full height from ground to top
+  const ty = GROUND_TOP - th;
+
+  // Main tower body — dark oak logs
+  ctx.fillStyle = '#1E1008';
+  ctx.fillRect(tx, ty, tw, th);
+
+  // Horizontal log bands
+  ctx.fillStyle = '#2E1A0C';
+  for (let ly = ty; ly < GROUND_TOP; ly += 14) {
+    ctx.fillRect(tx, ly, tw, 5);
+  }
+
+  // Vertical log dividers
+  ctx.fillStyle = '#140C04';
+  for (let lx = tx; lx <= tx + tw; lx += 14) {
+    ctx.fillRect(lx, ty, 2, th);
+  }
+
+  // Arrow slits (two rows)
+  ctx.fillStyle = '#060402';
+  ctx.fillRect(tx + 10, ty + 50, 6, 18);
+  ctx.fillRect(tx + 38, ty + 50, 6, 18);
+  ctx.fillRect(tx + 10, ty + 110, 6, 18);
+  ctx.fillRect(tx + 38, ty + 110, 6, 18);
+
+  // Top platform overhang
+  ctx.fillStyle = '#2A1408';
+  ctx.fillRect(tx - 10, ty + 10, tw + 20, 12);
+  ctx.fillStyle = '#140C04';
+  for (let lx = tx - 10; lx <= tx + tw + 10; lx += 12) {
+    ctx.fillRect(lx, ty + 10, 2, 12);
+  }
+
+  // Fence posts along top
+  ctx.fillStyle = '#1E1008';
+  for (let lx = tx - 8; lx <= tx + tw + 4; lx += 8) {
+    ctx.fillRect(lx, ty, 4, 10);
+  }
+
+  // Banner hanging below overhang (left side)
+  ctx.fillStyle = '#881414';
+  ctx.fillRect(tx + 8, ty + 22, 14, 28);
+  ctx.fillStyle = '#5A0C0C';
+  ctx.fillRect(tx + 10, ty + 28, 10, 4);
+  ctx.fillRect(tx + 10, ty + 36, 10, 4);
+  // Banner pole
+  ctx.fillStyle = '#7A5028';
+  ctx.fillRect(tx + 7, ty + 14, 2, 36);
+
+  // Second banner (right side)
+  ctx.fillStyle = '#881414';
+  ctx.fillRect(tx + tw - 22, ty + 22, 14, 28);
+  ctx.fillStyle = '#5A0C0C';
+  ctx.fillRect(tx + tw - 20, ty + 28, 10, 4);
+  ctx.fillRect(tx + tw - 20, ty + 36, 10, 4);
+  ctx.fillStyle = '#7A5028';
+  ctx.fillRect(tx + tw - 9, ty + 14, 2, 36);
+}
+
+function drawBackgroundOutpost() {
+  ctx.fillStyle = outpostGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  // Heavy overcast clouds
+  ctx.fillStyle = 'rgba(100,120,140,0.5)';
+  ctx.fillRect(0, 0, W, 70);
+  ctx.fillStyle = 'rgba(90,110,130,0.4)';
+  ctx.fillRect(30,  20, 220, 60);
+  ctx.fillRect(330, 10, 240, 55);
+  ctx.fillRect(620, 25, 200, 50);
+  ctx.fillStyle = 'rgba(70,90,110,0.35)';
+  ctx.fillRect(150, 40, 180, 45);
+  ctx.fillRect(510, 35, 150, 40);
+
+  // Far spruce trees (left side)
+  drawOutpostTree(60);
+  drawOutpostTree(140);
+  drawOutpostTree(200);
+
+  // Pillager outpost tower (centre-right background)
+  drawPillagerTower(500);
+
+  // Far spruce trees (right side)
+  drawOutpostTree(660);
+  drawOutpostTree(730);
+}
+
+function drawGroundOutpost() {
+  // Dark coarse dirt / dark grass
+  ctx.fillStyle = '#2A3A20';
+  ctx.fillRect(0, GROUND_TOP, W, 12);
+  ctx.fillStyle = '#1E2A14';
+  ctx.fillRect(0, GROUND_TOP + 12, W, H - GROUND_TOP - 12);
+  ctx.fillStyle = '#223018';
+  for (let bx = 0; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, 5);
+    ctx.fillRect(bx, GROUND_TOP, 1, 12);
+  }
+}
+
+function drawPlatformOutpost(p) {
+  const platH = 24;
+  // Dark oak planks
+  ctx.fillStyle = '#3A2010';
+  ctx.fillRect(p.x, p.y, p.w, platH);
+  ctx.fillStyle = '#4A2C18';
+  ctx.fillRect(p.x, p.y, p.w, 7);
+  ctx.fillStyle = '#241408';
+  for (let bx = p.x; bx < p.x + p.w; bx += 16) {
+    ctx.fillRect(bx, p.y, 2, platH);
+  }
+  ctx.fillStyle = '#5A3820';
+  for (let bx = p.x + 3; bx < p.x + p.w; bx += 16) {
+    ctx.fillRect(bx, p.y + 1, 10, 2);
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 4);
+}
+
 function drawBackground() {
   if (isMine()) { drawBackgroundMine(); return; }
   if (isForest()) { drawBackgroundForest(); return; }
@@ -1521,6 +1700,7 @@ function drawBackground() {
   if (isVillage()) { drawBackgroundVillage(); return; }
   if (isDesert()) { drawBackgroundDesert(); return; }
   if (isPyramid()) { drawBackgroundPyramid(); return; }
+  if (isOutpost()) { drawBackgroundOutpost(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
