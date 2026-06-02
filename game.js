@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.34';
+const VERSION = '1.0.35';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -21,6 +21,7 @@ const LEVEL_CONFIGS = [
   { theme: 'ice',        mobType: 'ice_zombie', flyingMobType: null,     hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'end',        mobType: 'enderman',  flyingMobType: null,     hasVillagers: false, portal: 'portal', startItem: null,      hasOres: false },
   { theme: 'end',        mobType: 'enderman',  flyingMobType: null,     hasVillagers: false, portal: 'portal', startItem: null,      hasOres: false },
+  { theme: 'end_castle', mobType: 'enderman',  flyingMobType: null,     hasVillagers: false, portal: 'portal', startItem: null,      hasOres: false },
 ];
 
 function levelCfg() {
@@ -1089,6 +1090,7 @@ function drawGround() {
   if (isUnderwater()) { drawGroundUnderwater(); return; }
   if (isIce())        { drawGroundIce(); return; }
   if (isEnd())        { drawGroundEnd(); return; }
+  if (isEndCastle())  { drawGroundEndCastle(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -1165,6 +1167,7 @@ function drawPlatform(p) {
   if (isUnderwater()) { drawPlatformUnderwater(p); return; }
   if (isIce())        { drawPlatformIce(p); return; }
   if (isEnd())        { drawPlatformEnd(p); return; }
+  if (isEndCastle())  { drawPlatformEndCastle(p); return; }
   const platH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -1231,6 +1234,7 @@ function isSwamp()      { return levelCfg().theme === 'swamp'; }
 function isUnderwater() { return levelCfg().theme === 'underwater'; }
 function isIce()       { return levelCfg().theme === 'ice'; }
 function isEnd()       { return levelCfg().theme === 'end'; }
+function isEndCastle() { return levelCfg().theme === 'end_castle'; }
 function isNight()      { return levelCfg().theme === 'night'; }
 function isVillage() { return levelCfg().hasVillagers; }
 function isMine()    { return levelCfg().theme === 'mine'; }
@@ -2678,6 +2682,172 @@ function drawPlatformEnd(p) {
   ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 3);
 }
 
+// ── End Castle ───────────────────────────────────────────────────────────────
+
+function drawPurpurBlock(x, y, w, h) {
+  ctx.fillStyle = '#6B2F5A';
+  ctx.fillRect(x, y, w, h);
+  // Horizontal mortar seams
+  ctx.fillStyle = '#4E2242';
+  for (let by = y + 15; by < y + h; by += 16) ctx.fillRect(x, by, w, 1);
+  // Vertical seams
+  for (let bx = x + 15; bx < x + w; bx += 16) ctx.fillRect(bx, y, 1, h);
+  // Left edge shadow
+  ctx.fillStyle = '#3D1A30';
+  ctx.fillRect(x, y, 2, h);
+  // Top highlight
+  ctx.fillStyle = '#7A3A68';
+  ctx.fillRect(x, y, w, 2);
+}
+
+function drawEndRod(x, y, h) {
+  // Glow halo
+  ctx.fillStyle = 'rgba(220, 220, 255, 0.35)';
+  ctx.fillRect(x - 4, y - h, 8, h);
+  // Rod body
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(x - 1, y - h, 2, h);
+  // Cap
+  ctx.fillStyle = '#E0E0FF';
+  ctx.fillRect(x - 3, y - h - 4, 6, 4);
+}
+
+function drawCastleBattlement(x, y, w) {
+  const mW = 10, mH = 14, gap = 12;
+  drawPurpurBlock(x, y, w, 6);
+  for (let bx = x + 4; bx + mW <= x + w - 2; bx += mW + gap) {
+    drawPurpurBlock(bx, y - mH, mW, mH);
+  }
+}
+
+function drawBackgroundEndCastle() {
+  ctx.fillStyle = endGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  // Void particles (shared with regular End)
+  for (const p of END_PARTICLES) {
+    ctx.fillStyle = p.purple ? 'rgba(180, 80, 255, 0.75)' : 'rgba(255, 255, 255, 0.55)';
+    ctx.fillRect(p.x, p.y, p.s, p.s);
+  }
+
+  const gY = GROUND_TOP;
+
+  // Far background silhouette towers (depth layer)
+  ctx.fillStyle = '#2A1028';
+  ctx.fillRect(14,  gY - 115, 42, 115);
+  ctx.fillRect(56,  gY - 88,  32, 88);
+  ctx.fillRect(746, gY - 115, 42, 115);
+  ctx.fillRect(714, gY - 88,  32, 88);
+  ctx.fillStyle = '#200C20';
+  for (let bx = 14; bx < 56; bx += 16) ctx.fillRect(bx + 2, gY - 129, 9, 14);
+  for (let bx = 56; bx < 88; bx += 16) ctx.fillRect(bx + 2, gY - 102, 9, 14);
+  for (let bx = 746; bx < 788; bx += 16) ctx.fillRect(bx + 2, gY - 129, 9, 14);
+  for (let bx = 714; bx < 746; bx += 16) ctx.fillRect(bx + 2, gY - 102, 9, 14);
+
+  // === Main castle ===
+  // Left outer tower
+  drawPurpurBlock(110, gY - 240, 70, 240);
+  // Left connecting wall
+  drawPurpurBlock(180, gY - 148, 120, 148);
+  // Central keep
+  drawPurpurBlock(300, gY - 265, 200, 265);
+  // Right connecting wall
+  drawPurpurBlock(500, gY - 148, 120, 148);
+  // Right outer tower
+  drawPurpurBlock(620, gY - 240, 70, 240);
+
+  // Central keep — gate archway
+  ctx.fillStyle = '#0C0415';
+  ctx.fillRect(366, gY - 96, 68, 96);   // doorway
+  ctx.fillRect(360, gY - 116, 80, 22);  // arch crown
+  // Gate frame highlight
+  ctx.fillStyle = '#241040';
+  ctx.fillRect(360, gY - 116, 4, 116);
+  ctx.fillRect(436, gY - 116, 4, 116);
+
+  // Keep windows — lower row (warm glow)
+  for (const wx of [314, 346, 414, 446]) {
+    ctx.fillStyle = '#FFE0A0';
+    ctx.fillRect(wx, gY - 218, 18, 28);
+    ctx.fillStyle = 'rgba(255, 215, 140, 0.30)';
+    ctx.fillRect(wx - 2, gY - 220, 22, 32);
+  }
+  // Keep windows — upper row (purple End glow)
+  for (const wx of [328, 430]) {
+    ctx.fillStyle = '#C080FF';
+    ctx.fillRect(wx, gY - 252, 14, 22);
+    ctx.fillStyle = 'rgba(180, 80, 255, 0.28)';
+    ctx.fillRect(wx - 2, gY - 254, 18, 26);
+  }
+
+  // Tower windows
+  for (const wx of [130, 162]) {
+    ctx.fillStyle = '#FFE0A0';
+    ctx.fillRect(wx, gY - 195, 16, 24);
+  }
+  ctx.fillStyle = '#FFE0A0';
+  ctx.fillRect(130, gY - 138, 16, 24);
+  for (const wx of [638, 666]) {
+    ctx.fillStyle = '#FFE0A0';
+    ctx.fillRect(wx, gY - 195, 16, 24);
+  }
+  ctx.fillStyle = '#FFE0A0';
+  ctx.fillRect(638, gY - 138, 16, 24);
+
+  // === Battlements ===
+  drawCastleBattlement(110, gY - 240, 70);
+  drawCastleBattlement(180, gY - 148, 120);
+  drawCastleBattlement(300, gY - 265, 200);
+  drawCastleBattlement(500, gY - 148, 120);
+  drawCastleBattlement(620, gY - 240, 70);
+
+  // === End rods ===
+  drawEndRod(145, gY - 256, 28);  // left tower peak
+  drawEndRod(655, gY - 256, 28);  // right tower peak
+  drawEndRod(368, gY - 282, 30);  // keep left
+  drawEndRod(432, gY - 282, 30);  // keep right
+
+  // Ground mist
+  ctx.fillStyle = 'rgba(120, 40, 180, 0.12)';
+  ctx.fillRect(0, gY - 30, W, 30);
+}
+
+function drawGroundEndCastle() {
+  // Purpur floor
+  ctx.fillStyle = '#6B2F5A';
+  ctx.fillRect(0, GROUND_TOP, W, H - GROUND_TOP);
+  ctx.fillStyle = '#4E2242';
+  for (let bx = 0; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, BLOCK - 1);
+  }
+  // Cross-pattern dots
+  ctx.fillStyle = '#3D1A30';
+  for (let bx = 8; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx,      GROUND_TOP + 8,  4, 4);
+    ctx.fillRect(bx + 16, GROUND_TOP + 20, 4, 4);
+  }
+  // Top highlight
+  ctx.fillStyle = '#7A3A68';
+  for (let bx = 2; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_TOP + 1, 10, 2);
+  }
+}
+
+function drawPlatformEndCastle(p) {
+  const platH = 18;
+  ctx.fillStyle = '#6B2F5A';
+  ctx.fillRect(p.x, p.y, p.w, platH);
+  ctx.fillStyle = '#4E2242';
+  ctx.fillRect(p.x, p.y + 9, p.w, 1);
+  for (let bx = p.x + BLOCK; bx < p.x + p.w; bx += BLOCK) {
+    ctx.fillRect(bx, p.y, 1, platH);
+  }
+  ctx.fillStyle = '#7A3A68';
+  ctx.fillRect(p.x, p.y, p.w, 3);
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 3);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 function drawBackground() {
@@ -2694,6 +2864,7 @@ function drawBackground() {
   if (isUnderwater()) { drawBackgroundUnderwater(); return; }
   if (isIce())        { drawBackgroundIce(); return; }
   if (isEnd())        { drawBackgroundEnd(); return; }
+  if (isEndCastle())  { drawBackgroundEndCastle(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
