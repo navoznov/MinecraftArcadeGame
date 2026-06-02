@@ -209,6 +209,48 @@ const HUSK_PALETTE = [
   '#7A5820',  // 9 open mouth
 ];
 
+// Ice Zombie palette — icy blue-gray skin, pale cyan eyes, teal shirt, deep purple pants
+const ICE_ZOMBIE_PALETTE = [
+  null,       // 0 transparent
+  '#8ABAC8',  // 1 icy blue-gray skin
+  '#2A4858',  // 2 dark teal (head outline)
+  '#5AB8D8',  // 3 icy cyan shirt
+  '#6030A8',  // 4 deep purple pants
+  '#201030',  // 5 dark purple-black shoes
+  '#C0F0FF',  // 6 pale icy-cyan glowing eyes
+  '#3A90B0',  // 7 shirt shadow
+  '#401880',  // 8 pants shadow
+  '#1A3040',  // 9 dark open mouth
+];
+
+// Drowned palette — dark teal waterlogged skin, algae on head, pale cyan eyes
+const DROWNED_PALETTE = [
+  null,       // 0 transparent
+  '#3A7870',  // 1 drowned teal skin
+  '#4A7828',  // 2 algae green (reuses zombie "hair" pixels — looks like seaweed on head)
+  '#2A5040',  // 3 dark teal waterlogged shirt
+  '#283838',  // 4 dark teal-gray pants
+  '#181008',  // 5 dark shoes
+  '#C0F0F8',  // 6 pale icy-cyan glowing eyes
+  '#1A3428',  // 7 shirt shadow
+  '#182030',  // 8 pants shadow
+  '#1A4838',  // 9 dark open mouth
+];
+
+// Enderman palette — near-black void body, glowing purple eyes
+const ENDERMAN_PALETTE = [
+  null,       // 0 transparent
+  '#1C1022',  // 1 near-black purple-tinted body
+  '#100818',  // 2 very dark outline
+  '#181020',  // 3 dark torso
+  '#140C1C',  // 4 dark legs
+  '#0C0612',  // 5 darkest extremities / shoes
+  '#A040F0',  // 6 glowing purple eyes
+  '#161020',  // 7 torso shadow
+  '#120A1A',  // 8 leg shadow
+  '#0A080E',  // 9 dark open area / mouth
+];
+
 // Blacksmith/welder palette — кожаная рубаха, тёмный кузнечный фартук
 const BLACKSMITH_PALETTE = [
   null,       // 0 transparent

@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.31';
+const VERSION = '1.0.34';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -17,8 +17,10 @@ const LEVEL_CONFIGS = [
   { theme: 'dark_forest', mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'mansion',    mobType: 'pillager', flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'swamp',      mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
-  { theme: 'underwater', mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
-  { theme: 'ice',        mobType: 'skeleton', flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'underwater', mobType: 'drowned',  flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'ice',        mobType: 'ice_zombie', flyingMobType: null,     hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
+  { theme: 'end',        mobType: 'enderman',  flyingMobType: null,     hasVillagers: false, portal: 'portal', startItem: null,      hasOres: false },
+  { theme: 'end',        mobType: 'enderman',  flyingMobType: null,     hasVillagers: false, portal: 'portal', startItem: null,      hasOres: false },
 ];
 
 function levelCfg() {
@@ -183,6 +185,12 @@ iceGradient.addColorStop(0,   '#88AECE');
 iceGradient.addColorStop(0.5, '#C0D8EC');
 iceGradient.addColorStop(1,   '#E4F0F8');
 
+// The End void gradient — near-black with purple tint
+const endGradient = ctx.createLinearGradient(0, 0, 0, GROUND_TOP);
+endGradient.addColorStop(0,   '#04000C');
+endGradient.addColorStop(0.5, '#0A0018');
+endGradient.addColorStop(1,   '#180030');
+
 // Deterministic snowflake positions for ice level
 const SNOWFLAKES = [];
 for (let i = 0; i < 50; i++) {
@@ -190,6 +198,17 @@ for (let i = 0; i < 50; i++) {
     x: (i * 337 + 53) % (W - 10) + 5,
     y: (i * 191 + 37) % (GROUND_TOP - 20) + 5,
     s: i % 5 === 0 ? 3 : 2,
+  });
+}
+
+// Deterministic void particles for The End
+const END_PARTICLES = [];
+for (let i = 0; i < 80; i++) {
+  END_PARTICLES.push({
+    x: (i * 317 + 61) % (W - 10) + 5,
+    y: (i * 173 + 29) % (GROUND_TOP - 20) + 5,
+    s: i % 7 === 0 ? 3 : i % 3 === 0 ? 2 : 1,
+    purple: i % 3 !== 0,
   });
 }
 
@@ -798,6 +817,73 @@ function drawHusk(x, y, facingRight, walking, frame, alpha) {
   ctx.restore();
 }
 
+function drawDrowned(x, y, facingRight, walking, frame, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const legOffset = walking ? (frame === 0 ? 3 : -3) : 0;
+  drawSprite(DROWNED_PALETTE, ZOMBIE, x, y, facingRight, legOffset);
+  ctx.restore();
+}
+
+function drawIceZombie(x, y, facingRight, walking, frame, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const legOffset = walking ? (frame === 0 ? 3 : -3) : 0;
+  drawSprite(ICE_ZOMBIE_PALETTE, ZOMBIE, x, y, facingRight, legOffset);
+
+  // Ice chunks protruding from each shoulder (row 8 of sprite = y + 40)
+  const shY = y + CELL * 7;
+  const leftX  = facingRight ? x - CELL * 2 : x + SW;
+  const rightX = facingRight ? x + SW        : x - CELL * 2;
+
+  // Left ice chunk
+  ctx.fillStyle = '#A0DDED';
+  ctx.fillRect(leftX, shY, CELL * 2, CELL * 3);
+  ctx.fillStyle = '#C8F4FF';
+  ctx.fillRect(leftX, shY, CELL * 2, CELL);
+  ctx.fillStyle = '#5AAAC0';
+  ctx.fillRect(leftX + CELL, shY + CELL, CELL, CELL * 2);
+  // inner spike
+  ctx.fillStyle = '#C8F4FF';
+  ctx.fillRect(leftX + 2, shY - CELL + 2, CELL - 2, CELL);
+
+  // Right ice chunk
+  ctx.fillStyle = '#A0DDED';
+  ctx.fillRect(rightX, shY, CELL * 2, CELL * 3);
+  ctx.fillStyle = '#C8F4FF';
+  ctx.fillRect(rightX, shY, CELL * 2, CELL);
+  ctx.fillStyle = '#5AAAC0';
+  ctx.fillRect(rightX, shY + CELL, CELL, CELL * 2);
+  // inner spike
+  ctx.fillStyle = '#C8F4FF';
+  ctx.fillRect(rightX + 2, shY - CELL + 2, CELL - 2, CELL);
+
+  ctx.restore();
+}
+
+function drawEnderman(x, y, facingRight, walking, frame, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const legOffset = walking ? (frame === 0 ? 3 : -3) : 0;
+  drawSprite(ENDERMAN_PALETTE, ZOMBIE, x, y, facingRight, legOffset);
+
+  // Extra-long thin arms (Enderman hallmark)
+  const shY = y + CELL * 7;
+  const armW = CELL * 7;
+  const armH = CELL * 2;
+  const leftX  = facingRight ? x - armW : x + SW;
+  const rightX = facingRight ? x + SW   : x - armW;
+
+  ctx.fillStyle = '#1C1022';
+  ctx.fillRect(leftX,  shY, armW, armH);
+  ctx.fillRect(rightX, shY, armW, armH);
+  ctx.fillStyle = '#0C0612';
+  ctx.fillRect(leftX,  shY + armH - 2, armW, 2);
+  ctx.fillRect(rightX, shY + armH - 2, armW, 2);
+
+  ctx.restore();
+}
+
 function drawPillager(x, y, facingRight, walking, frame, alpha) {
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -956,8 +1042,14 @@ function drawMobs() {
       drawSkeleton(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
     } else if (mobType === 'husk') {
       drawHusk(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
+    } else if (mobType === 'drowned') {
+      drawDrowned(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
     } else if (mobType === 'pillager') {
       drawPillager(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
+    } else if (mobType === 'ice_zombie') {
+      drawIceZombie(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
+    } else if (mobType === 'enderman') {
+      drawEnderman(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
     } else {
       drawZombie(mob.x, mob.y - SH, mob.vx > 0, mob.alive, mob.walkFrame, alpha);
     }
@@ -996,6 +1088,7 @@ function drawGround() {
   if (isSwamp())      { drawGroundSwamp(); return; }
   if (isUnderwater()) { drawGroundUnderwater(); return; }
   if (isIce())        { drawGroundIce(); return; }
+  if (isEnd())        { drawGroundEnd(); return; }
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(0, GROUND_TOP, W, 12);
   ctx.fillStyle = '#8B5E3C';
@@ -1071,6 +1164,7 @@ function drawPlatform(p) {
   if (isSwamp())      { drawPlatformSwamp(p); return; }
   if (isUnderwater()) { drawPlatformUnderwater(p); return; }
   if (isIce())        { drawPlatformIce(p); return; }
+  if (isEnd())        { drawPlatformEnd(p); return; }
   const platH = 24;
   ctx.fillStyle = '#5A8A3C';
   ctx.fillRect(p.x, p.y, p.w, 10);
@@ -1136,6 +1230,7 @@ function isMansion()    { return levelCfg().theme === 'mansion'; }
 function isSwamp()      { return levelCfg().theme === 'swamp'; }
 function isUnderwater() { return levelCfg().theme === 'underwater'; }
 function isIce()       { return levelCfg().theme === 'ice'; }
+function isEnd()       { return levelCfg().theme === 'end'; }
 function isNight()      { return levelCfg().theme === 'night'; }
 function isVillage() { return levelCfg().hasVillagers; }
 function isMine()    { return levelCfg().theme === 'mine'; }
@@ -2466,6 +2561,125 @@ function drawPlatformIce(p) {
   ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 3);
 }
 
+// ── The End ──────────────────────────────────────────────────────────────────
+
+function drawEndCrystal(cx, cy) {
+  // Light beam from sky down to crystal
+  ctx.fillStyle = 'rgba(200, 80, 255, 0.18)';
+  ctx.fillRect(cx - 2, 0, 4, cy);
+  // Outer glass border (4 sides, translucent)
+  ctx.fillStyle = 'rgba(190, 140, 255, 0.42)';
+  ctx.fillRect(cx - 8, cy - 8, 16, 2);
+  ctx.fillRect(cx - 8, cy + 6, 16, 2);
+  ctx.fillRect(cx - 8, cy - 8, 2, 16);
+  ctx.fillRect(cx + 6, cy - 8, 2, 16);
+  // Inner glowing fire core
+  ctx.fillStyle = '#FF1A1A';
+  ctx.fillRect(cx - 4, cy - 4, 8, 8);
+  ctx.fillStyle = '#FF7070';
+  ctx.fillRect(cx - 2, cy - 2, 4, 4);
+  ctx.fillStyle = '#FFBBBB';
+  ctx.fillRect(cx - 1, cy - 1, 2, 2);
+}
+
+function drawBackgroundEnd() {
+  ctx.fillStyle = endGradient;
+  ctx.fillRect(0, 0, W, GROUND_TOP);
+
+  // Distant floating End Stone island fragments
+  ctx.fillStyle = '#AEAD78';
+  ctx.fillRect(52,  GROUND_TOP - 205, 88, 16);
+  ctx.fillRect(298, GROUND_TOP - 248, 66, 14);
+  ctx.fillRect(548, GROUND_TOP - 188, 94, 16);
+  ctx.fillStyle = '#8A8A54';  // underside shadow
+  ctx.fillRect(52,  GROUND_TOP - 213, 88, 8);
+  ctx.fillRect(298, GROUND_TOP - 256, 66, 8);
+  ctx.fillRect(548, GROUND_TOP - 196, 94, 8);
+
+  // Void particles
+  for (const p of END_PARTICLES) {
+    ctx.fillStyle = p.purple ? 'rgba(180, 80, 255, 0.75)' : 'rgba(255, 255, 255, 0.55)';
+    ctx.fillRect(p.x, p.y, p.s, p.s);
+  }
+
+  // Obsidian pillars with End crystals
+  const pillars = [
+    { x: 72,  h: 205, w: 26 },
+    { x: 215, h: 255, w: 30 },
+    { x: 425, h: 228, w: 28 },
+    { x: 618, h: 262, w: 32 },
+    { x: 728, h: 185, w: 24 },
+  ];
+  for (const pil of pillars) {
+    // Pillar body
+    ctx.fillStyle = '#1A0828';
+    ctx.fillRect(pil.x, GROUND_TOP - pil.h, pil.w, pil.h);
+    ctx.fillStyle = '#100420';
+    ctx.fillRect(pil.x, GROUND_TOP - pil.h, 4, pil.h);
+    ctx.fillStyle = '#241038';
+    ctx.fillRect(pil.x + pil.w - 4, GROUND_TOP - pil.h, 4, pil.h);
+    // Bedrock cap
+    ctx.fillStyle = '#0E0618';
+    ctx.fillRect(pil.x - 3, GROUND_TOP - pil.h - 7, pil.w + 6, 7);
+
+    const cx = pil.x + pil.w / 2 | 0;
+    const cy = GROUND_TOP - pil.h - 22;
+    drawEndCrystal(cx, cy);
+  }
+
+  // Faint purple ground mist
+  ctx.fillStyle = 'rgba(120, 40, 180, 0.10)';
+  ctx.fillRect(0, GROUND_TOP - 32, W, 32);
+}
+
+function drawGroundEnd() {
+  // End Stone base fill
+  ctx.fillStyle = '#DCDC8C';
+  ctx.fillRect(0, GROUND_TOP, W, H - GROUND_TOP);
+  // Block seams grid
+  ctx.fillStyle = '#C8C870';
+  for (let bx = 0; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_TOP, BLOCK - 1, BLOCK - 1);
+  }
+  // Crack details
+  ctx.fillStyle = '#B4B458';
+  for (let bx = 4; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx,      GROUND_TOP + 12, 10, 1);
+    ctx.fillRect(bx + 18, GROUND_TOP + 6,  8,  1);
+  }
+  // Top surface highlight
+  ctx.fillStyle = '#EEEEDA';
+  for (let bx = 2; bx < W; bx += BLOCK) {
+    ctx.fillRect(bx, GROUND_TOP + 1, 8, 2);
+  }
+}
+
+function drawPlatformEnd(p) {
+  const platH = 18;
+  // End Stone base
+  ctx.fillStyle = '#DCDC8C';
+  ctx.fillRect(p.x, p.y, p.w, platH);
+  // Horizontal seam
+  ctx.fillStyle = '#C8C870';
+  ctx.fillRect(p.x, p.y + 9, p.w, 1);
+  // Vertical block seams
+  for (let bx = p.x + BLOCK; bx < p.x + p.w; bx += BLOCK) {
+    ctx.fillRect(bx, p.y, 1, platH);
+  }
+  // Crack details
+  ctx.fillStyle = '#B4B458';
+  ctx.fillRect(p.x + 6,  p.y + 4,  10, 1);
+  ctx.fillRect(p.x + 20, p.y + 12, 8,  1);
+  // Top highlight
+  ctx.fillStyle = '#EEEEDA';
+  ctx.fillRect(p.x, p.y, p.w, 3);
+  // Shadow underside
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(p.x + 4, p.y + platH, p.w - 4, 3);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function drawBackground() {
   if (isMine()) { drawBackgroundMine(); return; }
   if (isForest()) { drawBackgroundForest(); return; }
@@ -2479,6 +2693,7 @@ function drawBackground() {
   if (isSwamp())      { drawBackgroundSwamp(); return; }
   if (isUnderwater()) { drawBackgroundUnderwater(); return; }
   if (isIce())        { drawBackgroundIce(); return; }
+  if (isEnd())        { drawBackgroundEnd(); return; }
   const night = isNight();
   ctx.fillStyle = night ? nightGradient : dayGradient;
   ctx.fillRect(0, 0, W, GROUND_TOP);
