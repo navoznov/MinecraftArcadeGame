@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.35';
+const VERSION = '1.0.36';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -26,6 +26,13 @@ const LEVEL_CONFIGS = [
 
 function levelCfg() {
   return LEVEL_CONFIGS[(level - 1) % LEVEL_CONFIGS.length];
+}
+function nextLevelCfg() {
+  return LEVEL_CONFIGS[level % LEVEL_CONFIGS.length];
+}
+function isPortalExit() {
+  return levelCfg().portal === 'portal' ||
+    nextLevelCfg().theme === 'end' || nextLevelCfg().theme === 'end_castle';
 }
 
 const W = 800;
@@ -3598,7 +3605,7 @@ function update() {
       if (player.x + SW - 4 > capLeft && player.x + 4 < capRight) {
         levelComplete = true;
         stopBgMusic();
-        if (levelCfg().portal === 'portal') playPortalEnter(); else playPipeEnter();
+        if (isPortalExit()) playPortalEnter(); else playPipeEnter();
       }
     }
   }
@@ -3765,7 +3772,7 @@ function draw() {
   platforms.forEach(drawPlatform);
   drawGround();
   if (pipeVisible) {
-    if (levelCfg().portal === 'portal') { portalFrame++; drawNetherPortal(PIPE_X, GROUND_TOP); }
+    if (isPortalExit()) { portalFrame++; drawNetherPortal(PIPE_X, GROUND_TOP); }
     else drawPipe(PIPE_X, GROUND_TOP);
   }
   drawWorldItems();
