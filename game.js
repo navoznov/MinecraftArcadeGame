@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.37';
+const VERSION = '1.0.38';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -462,9 +462,14 @@ document.addEventListener('keydown', e => {
 
   if (e.code === 'KeyH') { helpOpen = !helpOpen; return; }
 
-  if (!gameOver && !levelComplete && !paused && e.code === 'KeyN') {
+  if (!gameOver && !levelComplete && !paused && e.code === 'KeyB') {
     levelKills = Math.max(levelKills, 5);
     pipeVisible = true;
+    return;
+  }
+
+  if (!gameOver && !levelComplete && !paused && e.code === 'KeyN') {
+    nextLevel();
     return;
   }
 
