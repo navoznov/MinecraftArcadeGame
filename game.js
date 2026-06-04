@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.42';
+const VERSION = '1.0.43';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -275,6 +275,7 @@ let phantomTimer = 120;
 const MUTE_BTN = { x: W - 56, y: 8, w: 48, h: 32 };
 
 let useCooldown = 0;
+let potionEffect = { speed: 0, invincibility: 0, jump: 0 };
 let swordSwing  = { active: false, timer: 0 };
 let joyRays     = [];
 let miningAnim  = { active: false, timer: 0, maxTimer: 20, ore: null, oreArr: null, oreIdx: -1, oreType: '' };
@@ -428,6 +429,7 @@ function resetGame() {
   joyRays = [];
   swordSwing = { active: false, timer: 0 };
   useCooldown = 0;
+  potionEffect = { speed: 0, invincibility: 0, jump: 0 };
   miningAnim = { active: false, timer: 0, maxTimer: 20, ore: null, oreArr: null, oreIdx: -1, oreType: '' };
   initWorldItems();
   startBgMusic();
@@ -641,6 +643,15 @@ function useItem() {
     if (!miningAnim.active) { mineOre(); useCooldown = 25; }
   } else if (handSlot === 'apple') {
     eatApple();
+  } else if (handSlot === 'potion_speed') {
+    potionEffect.speed = 600;
+    handSlot = null;
+  } else if (handSlot === 'potion_invincibility') {
+    potionEffect.invincibility = 600;
+    handSlot = null;
+  } else if (handSlot === 'potion_jump') {
+    potionEffect.jump = 600;
+    handSlot = null;
   }
 }
 
@@ -761,7 +772,7 @@ function updatePhantoms() {
     const drawY    = PHANTOM_FLY_Y + Math.round(Math.sin(ph.age * 0.04) * 12);
     const overlapX = player.x + 4 < ph.x + PW && player.x + SW - 4 > ph.x;
     const overlapY = player.y - SH < drawY + PH && player.y > drawY;
-    if (overlapX && overlapY && !gameOver && !levelComplete) {
+    if (overlapX && overlapY && !gameOver && !levelComplete && !potionEffect.invincibility) {
       gameOver = true;
       stopBgMusic();
       playGameOver();
@@ -824,7 +835,7 @@ function updateMobs() {
         worldItems.push({ id: 'ender_eye', x: mob.x + (SW - ISLOT) / 2, y: mob.y - ISLOT });
       }
       playSquish();
-    } else {
+    } else if (!potionEffect.invincibility) {
       gameOver = true;
       stopBgMusic();
       playGameOver();
@@ -3062,6 +3073,45 @@ function drawHUD() {
   ctx.textAlign = 'right';
   ctx.fillText(`v${VERSION}`, W - 6, H - 5);
   ctx.textAlign = 'left';
+
+  drawPotionEffects();
+}
+
+function drawPotionEffects() {
+  const TOTAL = 600;
+  const defs = [
+    { key: 'speed',         label: 'Скорость',     color: '#4080FF' },
+    { key: 'invincibility', label: 'Неуязвимость', color: '#FFD700' },
+    { key: 'jump',          label: 'Прыгучесть',   color: '#60D020' },
+  ];
+  const BW = 130, BH = 20, BX = 12;
+  let by = 44;
+  for (const d of defs) {
+    const t = potionEffect[d.key];
+    if (t <= 0) continue;
+    // dark background
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(BX, by, BW, BH);
+    // progress bar fill
+    ctx.fillStyle = d.color;
+    ctx.globalAlpha = 0.35;
+    ctx.fillRect(BX, by, Math.round(BW * t / TOTAL), BH);
+    ctx.globalAlpha = 1;
+    // left accent stripe
+    ctx.fillStyle = d.color;
+    ctx.fillRect(BX, by, 3, BH);
+    // label
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(d.label, BX + 6, by + 13);
+    // countdown
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText(`${Math.ceil(t / 60)}с`, BX + BW - 3, by + 13);
+    ctx.textAlign = 'left';
+    by += BH + 4;
+  }
 }
 
 function drawItemIcon(id, x, y) {
@@ -3626,12 +3676,13 @@ function update() {
   if (!levelComplete) {
     const moving = input.left || input.right;
 
+    const curSpeed = potionEffect.speed > 0 ? MOVE_SPEED * 2 : MOVE_SPEED;
     if (input.left) {
-      player.x -= MOVE_SPEED;
+      player.x -= curSpeed;
       player.facingRight = false;
     }
     if (input.right) {
-      player.x += MOVE_SPEED;
+      player.x += curSpeed;
       player.facingRight = true;
     }
 
@@ -3647,7 +3698,7 @@ function update() {
     }
 
     if (input.jump && player.onGround) {
-      player.vy = JUMP_FORCE;
+      player.vy = potionEffect.jump > 0 ? JUMP_FORCE * 1.5 : JUMP_FORCE;
       player.onGround = false;
       playPew();
     }
@@ -3726,6 +3777,9 @@ function update() {
   updateVillagers();
 
   if (useCooldown > 0) useCooldown--;
+  if (potionEffect.speed > 0)         potionEffect.speed--;
+  if (potionEffect.invincibility > 0) potionEffect.invincibility--;
+  if (potionEffect.jump > 0)          potionEffect.jump--;
   if (swordSwing.active && --swordSwing.timer <= 0) swordSwing.active = false;
   for (let i = joyRays.length - 1; i >= 0; i--) {
     if (--joyRays[i].timer <= 0) joyRays.splice(i, 1);
@@ -3891,6 +3945,16 @@ function draw() {
   drawMobs();
   drawVillagers();
   drawSteve(player.x, player.y - SH, player.facingRight, input.left || input.right, player.walkFrame);
+  if (potionEffect.invincibility > 0) {
+    const flash = potionEffect.invincibility < 180 && Math.floor(potionEffect.invincibility / 8) % 2 === 0;
+    if (!flash) {
+      ctx.save();
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = '#FFD700';
+      ctx.fillRect(player.x, player.y - SH, SW, SH);
+      ctx.restore();
+    }
+  }
   drawJoyRays();
   drawSwordSwing();
   drawHUD();
