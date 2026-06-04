@@ -264,6 +264,19 @@ const BLACKSMITH_PALETTE = [
   '#0A0808',  // 8 apron shadow
 ];
 
+// Brewer/Cleric palette — tan skin, purple robe (Minecraft cleric villager)
+const BREWER_PALETTE = [
+  null,       // 0 transparent
+  '#C68642',  // 1 tan skin
+  '#3A1C08',  // 2 dark brown (outline, unibrow)
+  '#7030B0',  // 3 purple robe
+  '#4A1080',  // 4 dark purple lower robe
+  '#1A0E04',  // 5 dark (eyes, shoes)
+  '#A06030',  // 6 skin shadow (nose)
+  '#501888',  // 7 purple robe shadow
+  '#300A60',  // 8 dark purple robe shadow
+];
+
 // Pillager palette — gray iron cap, grayish-tan skin, dark maroon coat, dark pants
 const PILLAGER_PALETTE = [
   null,       // 0 transparent
