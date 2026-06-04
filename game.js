@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.38';
+const VERSION = '1.0.39';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -298,9 +298,10 @@ let handSlot  = null;
 
 let worldItems = [];
 
-let emeraldCount = 0;
-let ironCount    = 0;
-let diamondCount = 0;
+let emeraldCount  = 0;
+let ironCount     = 0;
+let diamondCount  = 0;
+let enderEyeCount = 0;
 let tradeOpen    = false;
 let tradePartner = null;   // 'farmer' | 'blacksmith'
 let helpOpen     = false;
@@ -416,6 +417,7 @@ function resetGame() {
   emeraldCount  = 0;
   ironCount     = 0;
   diamondCount  = 0;
+  enderEyeCount = 0;
   inventory = ['apple', null, null, null, null, null, null, null, null];
   handSlot = null;
   joyRays = [];
@@ -649,6 +651,9 @@ function activateSword() {
       score++;
       levelKills++;
       if (levelKills >= 5) pipeVisible = true;
+      if (levelCfg().mobType === 'enderman') {
+        worldItems.push({ id: 'ender_eye', x: mob.x + (SW - ISLOT) / 2, y: mob.y - ISLOT });
+      }
       playSquish();
     }
   }
@@ -1011,10 +1016,19 @@ function syncDiamondSlot() {
   }
 }
 
+function syncEnderEyeSlot() {
+  if (enderEyeCount <= 0) {
+    enderEyeCount = 0;
+    const idx = inventory.indexOf('ender_eye');
+    if (idx >= 0) inventory[idx] = null;
+  }
+}
+
 function stackCount(item) {
-  if (item === 'emerald') return emeraldCount;
-  if (item === 'iron')    return ironCount;
-  if (item === 'diamond') return diamondCount;
+  if (item === 'emerald')   return emeraldCount;
+  if (item === 'iron')      return ironCount;
+  if (item === 'diamond')   return diamondCount;
+  if (item === 'ender_eye') return enderEyeCount;
   return 0;
 }
 
@@ -3133,6 +3147,31 @@ function drawItemIcon(id, x, y) {
       ctx.fillRect(x + 28, y + 16,  10,  4);
       break;
     }
+    case 'ender_eye': {
+      // Full orb shape — darkest outer ring
+      ctx.fillStyle = '#0B4A2C';
+      ctx.fillRect(x + 14, y +  6, 24,  4);
+      ctx.fillRect(x +  8, y + 10, 36, 32);
+      ctx.fillRect(x + 14, y + 42, 24,  4);
+      // Main body (dark teal, slightly smaller)
+      ctx.fillStyle = '#158F55';
+      ctx.fillRect(x + 14, y +  8, 24,  4);
+      ctx.fillRect(x + 10, y + 12, 32, 28);
+      ctx.fillRect(x + 14, y + 40, 24,  4);
+      // Inner glow zone
+      ctx.fillStyle = '#28BC80';
+      ctx.fillRect(x + 14, y + 14, 24, 24);
+      ctx.fillRect(x + 10, y + 18, 32, 16);
+      // Bright center
+      ctx.fillStyle = '#60FFD8';
+      ctx.fillRect(x + 16, y + 18, 20, 16);
+      ctx.fillRect(x + 18, y + 16, 16, 20);
+      // Highlight
+      ctx.fillStyle = '#A8FFE8';
+      ctx.fillRect(x + 14, y + 14,  8,  4);
+      ctx.fillRect(x + 14, y + 18,  4,  4);
+      break;
+    }
   }
 }
 
@@ -3585,21 +3624,23 @@ function update() {
       const overlapX = player.x + SW > item.x && player.x < item.x + ISLOT;
       const overlapY = player.y > item.y && player.y - SH < item.y + ISLOT;
       if (overlapX && overlapY) {
-        const stackable = item.id === 'emerald' || item.id === 'iron' || item.id === 'diamond';
+        const stackable = item.id === 'emerald' || item.id === 'iron' || item.id === 'diamond' || item.id === 'ender_eye';
         if (stackable) {
           const existing = inventory.indexOf(item.id);
           if (existing >= 0) {
-            if (item.id === 'emerald') emeraldCount++;
+            if (item.id === 'emerald')   emeraldCount++;
             else if (item.id === 'iron') ironCount++;
-            else diamondCount++;
+            else if (item.id === 'diamond') diamondCount++;
+            else enderEyeCount++;
             worldItems.splice(i, 1);
           } else {
             const emptySlot = inventory.indexOf(null);
             if (emptySlot >= 0) {
               inventory[emptySlot] = item.id;
-              if (item.id === 'emerald') emeraldCount++;
+              if (item.id === 'emerald')   emeraldCount++;
               else if (item.id === 'iron') ironCount++;
-              else diamondCount++;
+              else if (item.id === 'diamond') diamondCount++;
+              else enderEyeCount++;
               worldItems.splice(i, 1);
             }
           }
