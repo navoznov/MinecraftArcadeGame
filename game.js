@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.41';
+const VERSION = '1.0.42';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -317,7 +317,11 @@ const TGAP       = 3;
 const FARMER_SHOP     = [{ id: 'apple',   price: 3, currency: 'emerald' }];
 const BLACKSMITH_SHOP = [{ id: 'sword',   price: 4, currency: 'iron' },
                          { id: 'pickaxe', price: 4, currency: 'iron' }];
-const BREWER_SHOP     = [];
+const BREWER_SHOP     = [
+  { id: 'potion_speed',          price: 3, currency: 'ender_eye' },
+  { id: 'potion_invincibility',  price: 5, currency: 'ender_eye' },
+  { id: 'potion_jump',           price: 6, currency: 'ender_eye' },
+];
 
 const player = {
   x: W / 2 - 20,
@@ -569,6 +573,12 @@ canvas.addEventListener('click', e => {
             if (ironCount >= si.price) {
               ironCount -= si.price;
               syncIronSlot();
+              inventory[slot] = si.id;
+            }
+          } else if (si.currency === 'ender_eye') {
+            if (enderEyeCount >= si.price) {
+              enderEyeCount -= si.price;
+              syncEnderEyeSlot();
               inventory[slot] = si.id;
             }
           } else {
@@ -3152,6 +3162,48 @@ function drawItemIcon(id, x, y) {
       ctx.fillRect(x + 28, y + 16,  10,  4);
       break;
     }
+    case 'potion_speed':
+    case 'potion_invincibility':
+    case 'potion_jump': {
+      const liqMain = id === 'potion_speed'         ? '#4080FF'
+                    : id === 'potion_invincibility'  ? '#E8C000'
+                    :                                  '#60D020';
+      const liqHi   = id === 'potion_speed'         ? '#90C8FF'
+                    : id === 'potion_invincibility'  ? '#FFF060'
+                    :                                  '#A0FF50';
+      // Cork
+      ctx.fillStyle = '#7A4810';
+      ctx.fillRect(x + 22, y +  4,  8,  5);
+      ctx.fillStyle = '#9A6020';
+      ctx.fillRect(x + 22, y +  4,  8,  2);
+      // Neck outline
+      ctx.fillStyle = '#2A5080';
+      ctx.fillRect(x + 20, y +  9, 12,  2);
+      ctx.fillRect(x + 21, y + 11,  2,  6);
+      ctx.fillRect(x + 29, y + 11,  2,  6);
+      // Neck glass fill
+      ctx.fillStyle = '#A0C0E0';
+      ctx.fillRect(x + 23, y + 11,  6,  6);
+      // Shoulder
+      ctx.fillStyle = '#2A5080';
+      ctx.fillRect(x + 14, y + 17, 24,  2);
+      // Body border
+      ctx.fillRect(x + 11, y + 19, 30, 24);
+      // Liquid fill
+      ctx.fillStyle = liqMain;
+      ctx.fillRect(x + 13, y + 19, 26, 22);
+      // Bottom dark edge
+      ctx.fillStyle = '#1A3860';
+      ctx.fillRect(x + 13, y + 39, 26,  2);
+      // Glass highlight
+      ctx.fillStyle = '#B8D8F0';
+      ctx.fillRect(x + 14, y + 20, 10,  6);
+      ctx.fillRect(x + 14, y + 26,  4,  6);
+      // Liquid glow
+      ctx.fillStyle = liqHi;
+      ctx.fillRect(x + 18, y + 22,  8,  6);
+      break;
+    }
     case 'ender_eye': {
       // Full orb shape — darkest outer ring
       ctx.fillStyle = '#0B4A2C';
@@ -3444,14 +3496,15 @@ function drawTradePanel() {
   const emSz   = Math.round(ISLOT * emSc);
   const emIconX = px + TRADE_HALF / 2 - 28;
   const isBlacksmith = tradePartner === 'blacksmith';
-  const currencyIcon  = isBlacksmith ? 'iron' : 'emerald';
-  const currencyCount = isBlacksmith ? ironCount : emeraldCount;
+  const isBrewer     = tradePartner === 'brewer';
+  const currencyIcon  = isBlacksmith ? 'iron' : isBrewer ? 'ender_eye' : 'emerald';
+  const currencyCount = isBlacksmith ? ironCount : isBrewer ? enderEyeCount : emeraldCount;
   ctx.save();
   ctx.translate(emIconX, emY - 4);
   ctx.scale(emSc, emSc);
   drawItemIcon(currencyIcon, 0, 0);
   ctx.restore();
-  ctx.fillStyle = isBlacksmith ? '#C8A060' : '#17DD62';
+  ctx.fillStyle = isBlacksmith ? '#C8A060' : isBrewer ? '#60FFD8' : '#17DD62';
   ctx.font = 'bold 13px monospace';
   ctx.textAlign = 'left';
   ctx.fillText(`x${currencyCount}`, emIconX + emSz + 4, emY + emSz * 0.55);
@@ -3471,7 +3524,8 @@ function drawTradePanel() {
   const shopX = midX + 14;
   let shopY = py + 32;
   const activeShop = tradePartner === 'blacksmith' ? BLACKSMITH_SHOP : tradePartner === 'brewer' ? BREWER_SHOP : FARMER_SHOP;
-  const itemNames  = { apple: 'Яблоко', sword: 'Меч', pickaxe: 'Кирка' };
+  const itemNames  = { apple: 'Яблоко', sword: 'Меч', pickaxe: 'Кирка',
+                       potion_speed: 'Зелье скорости', potion_invincibility: 'Зелье неуязвимости', potion_jump: 'Зелье прыгучести' };
 
   for (const si of activeShop) {
     drawTSlot(shopX, shopY, si.id);
@@ -3495,7 +3549,7 @@ function drawTradePanel() {
     ctx.fillText(`x${si.price}`, shopX + TSLOT + 10 + pSz + 3, shopY + 33);
 
     // Buy button
-    const availCurrency = si.currency === 'iron' ? ironCount : emeraldCount;
+    const availCurrency = si.currency === 'iron' ? ironCount : si.currency === 'ender_eye' ? enderEyeCount : emeraldCount;
     const canBuy  = availCurrency >= si.price;
     const hasRoom = inventory.indexOf(null) >= 0;
     const btnX = midX + TRADE_HALF - 82;
