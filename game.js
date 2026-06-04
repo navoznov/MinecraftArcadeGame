@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.39';
+const VERSION = '1.0.40';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -809,6 +809,9 @@ function updateMobs() {
       score++;
       levelKills++;
       if (levelKills >= 5) pipeVisible = true;
+      if (levelCfg().mobType === 'enderman') {
+        worldItems.push({ id: 'ender_eye', x: mob.x + (SW - ISLOT) / 2, y: mob.y - ISLOT });
+      }
       playSquish();
     } else {
       gameOver = true;
