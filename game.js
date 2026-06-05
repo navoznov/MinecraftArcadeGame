@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.43';
+const VERSION = '1.0.44';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -552,6 +552,10 @@ canvas.addEventListener('click', e => {
                 const ironSlot = inventory.indexOf('iron');
                 if (ironSlot >= 0) { ironCount += si.price; }
                 else { inventory[idx] = 'iron'; ironCount += si.price; }
+              } else if (si.currency === 'ender_eye') {
+                const eyeSlot = inventory.indexOf('ender_eye');
+                if (eyeSlot >= 0) { enderEyeCount += si.price; }
+                else { inventory[idx] = 'ender_eye'; enderEyeCount += si.price; }
               } else {
                 const emSlot = inventory.indexOf('emerald');
                 if (emSlot >= 0) { emeraldCount += si.price; }
