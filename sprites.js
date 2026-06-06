@@ -124,6 +124,33 @@ const PHANTOM = [
   [0,0,0,0,2,3,3,4,4,3,3,2,0,0,0,0], // row 7 tail
 ];
 
+const GHAST_PALETTE = [
+  null,       // 0 transparent
+  '#F8F8F8',  // 1 near-white body
+  '#D0D0D0',  // 2 light grey shading
+  '#484848',  // 3 dark grey outline / face
+  '#F0C0C0',  // 4 tentacle (пинк-белый)
+  '#D09090',  // 5 tentacle tip (тёмнее)
+];
+
+// Ghast: 12 wide × 14 tall (60×70 px), грустный куб с щупальцами
+const GHAST = [
+  [0,0,0,3,3,3,3,3,3,0,0,0], // row 0  верхний контур
+  [0,0,3,1,1,1,1,1,1,3,0,0], // row 1  верхняя часть тела
+  [0,3,1,1,1,1,1,1,1,1,3,0], // row 2  тело
+  [3,1,1,1,1,1,1,1,1,1,1,3], // row 3  тело (полная ширина)
+  [3,1,3,3,3,1,1,3,3,3,1,3], // row 4  грустные закрытые глаза
+  [3,1,1,1,1,1,1,1,1,1,1,3], // row 5  тело
+  [3,1,1,1,3,3,3,3,1,1,2,3], // row 6  губы-хмурилка (центр выше)
+  [3,1,1,3,1,1,1,1,3,1,2,3], // row 7  углы рта (ниже = уголки вниз)
+  [3,1,1,1,1,1,1,1,1,1,2,3], // row 8  нижняя часть тела
+  [0,3,2,2,2,2,2,2,2,2,3,0], // row 9  дно (затенение)
+  [0,4,0,4,0,4,0,4,0,4,0,0], // row 10 щупальца
+  [0,4,0,4,0,4,0,4,0,4,0,0], // row 11 щупальца
+  [0,0,0,5,0,4,0,5,0,0,0,0], // row 12 щупальца (короче по краям)
+  [0,0,0,0,0,5,0,0,0,0,0,0], // row 13 центральное щупальце (длиннее всех)
+];
+
 // Villager palette — тан кожа, унибровь, зелёная роба, коричневый фартук
 const VILLAGER_PALETTE = [
   null,       // 0 transparent
@@ -319,6 +346,9 @@ const SH = 18 * CELL; // sprite height = 90
 
 const PW = 16 * CELL; // phantom width  = 80 px
 const PH = 8  * CELL; // phantom height = 40 px
+
+const GW = 12 * CELL; // ghast width  = 60 px
+const GH = 14 * CELL; // ghast height = 70 px
 
 function drawSprite(palette, sprite, x, y, facingRight, legOffset) {
   for (let row = 0; row < 18; row++) {

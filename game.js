@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.45';
+const VERSION = '1.0.46';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -9,7 +9,7 @@ const LEVEL_CONFIGS = [
   { theme: 'mine',    mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: true  },
   { theme: 'forest',  mobType: 'zombie',   flyingMobType: 'phantom', hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'mine',    mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'portal', startItem: null,      hasOres: true  },
-  { theme: 'nether',  mobType: 'skeleton', flyingMobType: null,      hasVillagers: false, portal: 'portal', startItem: null,      hasOres: false },
+  { theme: 'nether',  mobType: 'skeleton', flyingMobType: 'ghast',   hasVillagers: false, portal: 'portal', startItem: null,      hasOres: false },
   { theme: 'village', mobType: null,       flyingMobType: null,      hasVillagers: true,  portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'desert',  mobType: 'husk',     flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
   { theme: 'pyramid', mobType: 'husk',     flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: null,      hasOres: false },
@@ -794,16 +794,20 @@ function updatePhantoms() {
     spawnPhantom();
   }
 
+  const isGhast = levelCfg().flyingMobType === 'ghast';
+  const flyW = isGhast ? GW : PW;
+  const flyH = isGhast ? GH : PH;
+
   for (let i = phantoms.length - 1; i >= 0; i--) {
     const ph = phantoms[i];
     ph.x += ph.vx;
     ph.age++;
 
-    if (ph.x < -PW - 60 || ph.x > W + 60) { phantoms.splice(i, 1); continue; }
+    if (ph.x < -flyW - 60 || ph.x > W + 60) { phantoms.splice(i, 1); continue; }
 
     const drawY    = PHANTOM_FLY_Y + Math.round(Math.sin(ph.age * 0.04) * 12);
-    const overlapX = player.x + 4 < ph.x + PW && player.x + SW - 4 > ph.x;
-    const overlapY = player.y - SH < drawY + PH && player.y > drawY;
+    const overlapX = player.x + 4 < ph.x + flyW && player.x + SW - 4 > ph.x;
+    const overlapY = player.y - SH < drawY + flyH && player.y > drawY;
     if (overlapX && overlapY && !gameOver && !levelComplete && !potionEffect.invincibility) {
       gameOver = true;
       stopBgMusic();
@@ -1279,8 +1283,26 @@ function drawPhantomSprite(ph) {
   }
 }
 
+function drawGhastSprite(ph) {
+  const drawY = PHANTOM_FLY_Y + Math.round(Math.sin(ph.age * 0.04) * 12);
+  const facingRight = ph.vx > 0;
+  for (let row = 0; row < 14; row++) {
+    for (let col = 0; col < 12; col++) {
+      const color = GHAST_PALETTE[GHAST[row][col]];
+      if (!color) continue;
+      const c = facingRight ? col : (11 - col);
+      ctx.fillStyle = color;
+      ctx.fillRect(ph.x + c * CELL, drawY + row * CELL, CELL, CELL);
+    }
+  }
+}
+
 function drawPhantoms() {
-  for (const ph of phantoms) drawPhantomSprite(ph);
+  const isGhast = levelCfg().flyingMobType === 'ghast';
+  for (const ph of phantoms) {
+    if (isGhast) drawGhastSprite(ph);
+    else drawPhantomSprite(ph);
+  }
 }
 
 function drawGround() {
