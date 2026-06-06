@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.44';
+const VERSION = '1.0.45';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -249,6 +249,19 @@ const MINE_TORCHES = [
 const keyInput = { left: false, right: false, jump: false };
 const input    = { left: false, right: false, jump: false };
 
+// ── Паук (уровни с темой mine) ─────────────────────────────
+const SPIDER_W    = 40;
+const SPIDER_H    = 22;
+const SPIDER_SPEED   = 1.5;
+const SPIDER_RESPAWN = 600;  // 10 секунд при 60fps
+const SPIDER_PATH = [
+  { x: 140, y: GROUND_TOP - 220 },  // верхний-левый  (y=182)
+  { x: 588, y: GROUND_TOP - 220 },  // верхний-правый
+  { x: 588, y: GROUND_TOP       },  // нижний-правый  (y=402)
+  { x: 140, y: GROUND_TOP       },  // нижний-левый
+];
+let spider = null;
+
 // ── Моб-система ────────────────────────────────────────────
 let mobSpeed      = 1.4;
 let spawnInterval = 240;
@@ -416,6 +429,7 @@ function resetGame() {
   phantomTimer = 120;
   gameOver = false;
   paused = false;
+  spider = null;
   inventoryOpen = false;
   tradeOpen     = false;
   tradePartner  = null;
@@ -683,6 +697,20 @@ function activateSword() {
       playSquish();
     }
   }
+  // Удар по пауку
+  if (isMine() && spider && spider.alive) {
+    const spCX = spider.x + SPIDER_W / 2;
+    const spCY = spider.y - SPIDER_H / 2;
+    const sdx = spCX - plCX;
+    const spInFront = player.facingRight ? sdx > -10 && sdx < range : sdx < 10 && sdx > -range;
+    if (spInFront && Math.abs(spCY - plCY) < SH * 0.75) {
+      spider.alive = false;
+      spider.dyingTimer = 20;
+      spider.respawnTimer = SPIDER_RESPAWN;
+      score++;
+      playSquish();
+    }
+  }
 }
 
 function eatApple() {
@@ -782,6 +810,123 @@ function updatePhantoms() {
       playGameOver();
     }
   }
+}
+
+function initSpider() {
+  spider = {
+    x: SPIDER_PATH[0].x,
+    y: SPIDER_PATH[0].y,
+    alive: true,
+    wpIdx: 1,
+    facingRight: true,
+    walkFrame: 0,
+    walkTimer: 0,
+    dyingTimer: 0,
+    respawnTimer: 0,
+  };
+}
+
+function updateSpider() {
+  if (!isMine() || !spider) return;
+
+  if (!spider.alive) {
+    if (spider.dyingTimer > 0) {
+      spider.dyingTimer--;
+    } else {
+      spider.respawnTimer--;
+      if (spider.respawnTimer <= 0) {
+        spider.x = SPIDER_PATH[0].x;
+        spider.y = SPIDER_PATH[0].y;
+        spider.wpIdx = 1;
+        spider.facingRight = true;
+        spider.alive = true;
+      }
+    }
+    return;
+  }
+
+  // Движение к следующей точке маршрута
+  const wp  = SPIDER_PATH[spider.wpIdx];
+  const dx  = wp.x - spider.x;
+  const dy  = wp.y - spider.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist <= SPIDER_SPEED) {
+    spider.x = wp.x;
+    spider.y = wp.y;
+    spider.wpIdx = (spider.wpIdx + 1) % SPIDER_PATH.length;
+  } else {
+    spider.x += (dx / dist) * SPIDER_SPEED;
+    spider.y += (dy / dist) * SPIDER_SPEED;
+  }
+  if (Math.abs(dx) > 1) spider.facingRight = dx > 0;
+
+  // Анимация ног
+  spider.walkTimer++;
+  if (spider.walkTimer > 8) { spider.walkTimer = 0; spider.walkFrame = 1 - spider.walkFrame; }
+
+  // Столкновение с игроком
+  if (!gameOver && !levelComplete) {
+    const ox = player.x + SW - 4 > spider.x      && player.x + 4 < spider.x + SPIDER_W;
+    const oy = player.y           > spider.y - SPIDER_H && player.y - SH < spider.y;
+    if (ox && oy && !potionEffect.invincibility) {
+      gameOver = true;
+      stopBgMusic();
+      playGameOver();
+    }
+  }
+}
+
+function drawGameSpider() {
+  if (!isMine() || !spider) return;
+  if (!spider.alive && spider.dyingTimer <= 0) return;
+  const alpha = spider.alive ? 1 : spider.dyingTimer / 20;
+  const sx = Math.round(spider.x);
+  const sy = Math.round(spider.y - SPIDER_H);
+  const la = spider.walkFrame === 0 ? 0 : 2;
+  const fr = spider.facingRight;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // Ноги (8 штук, тёмные)
+  ctx.fillStyle = '#16080E';
+  ctx.fillRect(sx,      sy +  2 - la,  10, 3);
+  ctx.fillRect(sx,      sy +  7,       10, 3);
+  ctx.fillRect(sx,      sy + 12 + la,  10, 3);
+  ctx.fillRect(sx,      sy + 17,       10, 3);
+  ctx.fillRect(sx + 30, sy +  2 - la,  10, 3);
+  ctx.fillRect(sx + 30, sy +  7,       10, 3);
+  ctx.fillRect(sx + 30, sy + 12 + la,  10, 3);
+  ctx.fillRect(sx + 30, sy + 17,       10, 3);
+
+  // Основное тело
+  ctx.fillStyle = '#240A18';
+  ctx.fillRect(sx +  8, sy,     24, SPIDER_H);
+  ctx.fillRect(sx +  6, sy +  3, 28, 16);
+
+  // Брюшко (задняя, более крупная часть)
+  const abX = fr ? sx + 8 : sx + 18;
+  ctx.fillStyle = '#300E22';
+  ctx.fillRect(abX,     sy + 1, 14, 20);
+  ctx.fillRect(abX - 2, sy + 3, 18, 14);
+  ctx.fillStyle = '#401830';  // блик
+  ctx.fillRect(abX + 2, sy + 2,  7,  5);
+
+  // Голова (передняя часть)
+  const hX = fr ? sx + 24 : sx + 8;
+  ctx.fillStyle = '#1C0810';
+  ctx.fillRect(hX, sy + 5, 8, 12);
+
+  // Глаза (красные)
+  const eX = fr ? sx + 25 : sx + 9;
+  ctx.fillStyle = '#FF1818';
+  ctx.fillRect(eX, sy +  6, 3, 3);
+  ctx.fillRect(eX, sy + 12, 3, 3);
+  ctx.fillStyle = '#FF8888';
+  ctx.fillRect(eX + 1, sy +  7, 1, 1);
+  ctx.fillRect(eX + 1, sy + 13, 1, 1);
+
+  ctx.restore();
 }
 
 function updateMobs() {
@@ -3779,6 +3924,7 @@ function update() {
   updateMobs();
   updatePhantoms();
   updateVillagers();
+  updateSpider();
 
   if (useCooldown > 0) useCooldown--;
   if (potionEffect.speed > 0)         potionEffect.speed--;
@@ -3890,6 +4036,7 @@ function nextLevel() {
   }
   villagers = [];
   if (isVillage()) initVillagers();
+  if (isMine()) initSpider(); else spider = null;
   phantoms = [];
   phantomTimer = Math.floor(spawnInterval / 2);
   paused       = false;
@@ -3947,6 +4094,7 @@ function draw() {
   drawWorldItems();
   drawPhantoms();
   drawMobs();
+  drawGameSpider();
   drawVillagers();
   drawSteve(player.x, player.y - SH, player.facingRight, input.left || input.right, player.walkFrame);
   if (potionEffect.invincibility > 0) {
