@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.46';
+const VERSION = '1.0.47';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -778,10 +778,13 @@ initWorldItems();
 
 function spawnPhantom() {
   const fromRight = Math.random() > 0.5;
+  const isGhast = levelCfg().flyingMobType === 'ghast';
+  const flyW = isGhast ? GW : PW;
   phantoms.push({
-    x:   fromRight ? W + 10 : -PW - 10,
-    vx:  fromRight ? -PHANTOM_SPEED : PHANTOM_SPEED,
-    age: 0,
+    x:     fromRight ? W + 10 : -flyW - 10,
+    vx:    fromRight ? -PHANTOM_SPEED : PHANTOM_SPEED,
+    age:   0,
+    happy: isGhast && Math.random() < 1 / 3,
   });
 }
 
@@ -808,7 +811,7 @@ function updatePhantoms() {
     const drawY    = PHANTOM_FLY_Y + Math.round(Math.sin(ph.age * 0.04) * 12);
     const overlapX = player.x + 4 < ph.x + flyW && player.x + SW - 4 > ph.x;
     const overlapY = player.y - SH < drawY + flyH && player.y > drawY;
-    if (overlapX && overlapY && !gameOver && !levelComplete && !potionEffect.invincibility) {
+    if (overlapX && overlapY && !gameOver && !levelComplete && !potionEffect.invincibility && !ph.happy) {
       gameOver = true;
       stopBgMusic();
       playGameOver();
@@ -1287,8 +1290,10 @@ function drawGhastSprite(ph) {
   const drawY = PHANTOM_FLY_Y + Math.round(Math.sin(ph.age * 0.04) * 12);
   const facingRight = ph.vx > 0;
   for (let row = 0; row < 14; row++) {
+    // для счастливого газта строки 6 и 7 (рот) меняются местами: хмурилка → улыбка
+    const srcRow = ph.happy ? (row === 6 ? 7 : row === 7 ? 6 : row) : row;
     for (let col = 0; col < 12; col++) {
-      const color = GHAST_PALETTE[GHAST[row][col]];
+      const color = GHAST_PALETTE[GHAST[srcRow][col]];
       if (!color) continue;
       const c = facingRight ? col : (11 - col);
       ctx.fillStyle = color;
