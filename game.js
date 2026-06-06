@@ -1,7 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const VERSION = '1.0.47';
+const VERSION = '1.0.48';
 
 const LEVEL_CONFIGS = [
   { theme: 'day',     mobType: 'zombie',   flyingMobType: null,      hasVillagers: false, portal: 'pipe',   startItem: 'sword',   hasOres: false },
@@ -285,6 +285,7 @@ let bgMusicMuted = true;
 let paused = false;
 let phantoms     = [];
 let phantomTimer = 120;
+let tamedGhast   = null;
 const MUTE_BTN = { x: W - 56, y: 8, w: 48, h: 32 };
 
 let useCooldown = 0;
@@ -427,6 +428,7 @@ function resetGame() {
   spawnMob(true, true);
   phantoms = [];
   phantomTimer = 120;
+  tamedGhast = null;
   gameOver = false;
   paused = false;
   spider = null;
@@ -811,10 +813,18 @@ function updatePhantoms() {
     const drawY    = PHANTOM_FLY_Y + Math.round(Math.sin(ph.age * 0.04) * 12);
     const overlapX = player.x + 4 < ph.x + flyW && player.x + SW - 4 > ph.x;
     const overlapY = player.y - SH < drawY + flyH && player.y > drawY;
-    if (overlapX && overlapY && !gameOver && !levelComplete && !potionEffect.invincibility && !ph.happy) {
-      gameOver = true;
-      stopBgMusic();
-      playGameOver();
+    if (overlapX && overlapY && !gameOver && !levelComplete) {
+      if (ph.happy && !tamedGhast && handSlot === 'iron') {
+        // Приручение: расходуем 1 железо
+        ironCount--;
+        if (ironCount <= 0) { handSlot = null; syncIronSlot(); }
+        tamedGhast = { x: ph.x, y: drawY, facingRight: ph.vx > 0, age: 0 };
+        phantoms.splice(i, 1);
+      } else if (!ph.happy && !potionEffect.invincibility) {
+        gameOver = true;
+        stopBgMusic();
+        playGameOver();
+      }
     }
   }
 }
@@ -1307,6 +1317,34 @@ function drawPhantoms() {
   for (const ph of phantoms) {
     if (isGhast) drawGhastSprite(ph);
     else drawPhantomSprite(ph);
+  }
+}
+
+function updateTamedGhast() {
+  if (!tamedGhast) return;
+  // Цель: чуть позади и выше головы игрока
+  const targetX = player.facingRight ? player.x - GW - 16 : player.x + SW + 16;
+  const targetY = player.y - SH - GH * 0.6;
+  tamedGhast.x += (targetX - tamedGhast.x) * 0.06;
+  tamedGhast.y += (targetY - tamedGhast.y) * 0.06;
+  tamedGhast.facingRight = tamedGhast.x < player.x;
+  tamedGhast.age++;
+}
+
+function drawTamedGhast() {
+  if (!tamedGhast) return;
+  const bobY = Math.round(Math.sin(tamedGhast.age * 0.05) * 7);
+  const drawY = Math.round(tamedGhast.y) + bobY;
+  const facingRight = tamedGhast.facingRight;
+  for (let row = 0; row < 14; row++) {
+    const srcRow = row === 6 ? 7 : row === 7 ? 6 : row; // всегда улыбается
+    for (let col = 0; col < 12; col++) {
+      const color = GHAST_PALETTE[GHAST[srcRow][col]];
+      if (!color) continue;
+      const c = facingRight ? col : (11 - col);
+      ctx.fillStyle = color;
+      ctx.fillRect(Math.round(tamedGhast.x) + c * CELL, drawY + row * CELL, CELL, CELL);
+    }
   }
 }
 
@@ -3950,6 +3988,7 @@ function update() {
 
   updateMobs();
   updatePhantoms();
+  updateTamedGhast();
   updateVillagers();
   updateSpider();
 
@@ -4120,6 +4159,7 @@ function draw() {
   }
   drawWorldItems();
   drawPhantoms();
+  drawTamedGhast();
   drawMobs();
   drawGameSpider();
   drawVillagers();
